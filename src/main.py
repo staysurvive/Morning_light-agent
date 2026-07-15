@@ -1,0 +1,47 @@
+from fastapi import FastAPI
+from src.core.config import get_settings
+from src.middlewares.logging import LoggingMiddleware
+from src.core.exceptions import register_exception_handlers
+from src.core.logger import setup_logger, logger
+from src.infra.database import engine
+
+
+
+# 使用上下文管理器感知项目的生命周期  （主要是项目的启动和停止）
+from contextlib import asynccontextmanager, contextmanager
+@asynccontextmanager
+async def  lifespan(app: FastAPI):
+    # 项目启动时执行
+    setup_logger()  # 配置日志记录器
+    setting = get_settings()
+    logger.info(f"项目{setting.APP_NAME} 启动,环境：{setting.APP_ENV}")
+    yield
+    # 项目停止时执行
+    # 关闭数据库连接池
+    await engine.dispose()
+    logger.info(f"项目{setting.APP_NAME} 停止,环境：{setting.APP_ENV}")
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    # 创建 应用
+    app = FastAPI(title="辰光Agent", version="1.0.0", debug=settings.APP_DEBUG)   
+  
+    # 注册中间件
+    app.add_middleware(LoggingMiddleware)
+
+    # 注册异常处理器
+    register_exception_handlers(app)
+    
+    # 注册路由
+    # app.include_router(router)
+
+    return app
+
+app = create_app()
+
+# 健康检查路由，能访问通，就代表应用启动成功
+@app.get("/health")
+async def root():
+    # Prometheus规范约束，返回的状态必须为“ok”，表示系统处于健康状态
+    return {"status": "ok"} 
