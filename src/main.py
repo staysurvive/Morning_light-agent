@@ -4,7 +4,7 @@ from src.middlewares.logging import LoggingMiddleware
 from src.core.exceptions import register_exception_handlers
 from src.core.logger import setup_logger, logger
 from src.infra.database import engine
-
+from src.modules.user.api import router as user_router
 
 
 # 使用上下文管理器感知项目的生命周期  （主要是项目的启动和停止）
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     
     # 注册路由
-    # app.include_router(router)
+    app.include_router(user_router,prefix="/api/v1/users")  # 注册用户路由 ，前缀为 /api/v1/users
 
     return app
 

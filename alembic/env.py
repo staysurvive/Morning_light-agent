@@ -9,8 +9,12 @@ from alembic import context
 
 # 导入 每个模型的orm类
 # 加载.env配置
+import src.modules.user.model 
+
 from src.core.config import get_settings
 from src.core.base_model import Base
+
+target_metadata = Base.metadata
 settings = get_settings()
 
 
