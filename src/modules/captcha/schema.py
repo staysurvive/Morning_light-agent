@@ -1,21 +1,11 @@
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
 
 class CaptchaRead(BaseModel):
-    """A newly generated captcha image and its verification key."""
-
+    """验证码读取体"""
     key: str
-    image: str = Field(description="A data:image/png;base64 URL")
-
+    image: str  # data:image/png;base64,...
 
 class CaptchaVerifyRequest(BaseModel):
-    """Payload used to verify a captcha."""
-
-    key: str = Field(min_length=1, max_length=128)
-    code: str = Field(min_length=1, max_length=16)
-
-
-class CaptchaVerifyResult(BaseModel):
-    """Captcha verification result."""
-
-    valid: bool
+    """验证码验证请求体"""
+    key: str
+    code: str
