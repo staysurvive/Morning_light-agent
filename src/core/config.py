@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = ""
     DB_NAME: str = "myapp"
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""
+    REDIS_DB: int = 0
+
     LOG_LEVEL: str = "DEBUG"
     LOG_DIR: str = "logs"
 
