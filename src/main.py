@@ -6,6 +6,9 @@ from src.core.logger import setup_logger, logger
 from src.infra.database import engine
 from src.modules.user.api import router as user_router
 from src.modules.captcha.api import router as captcha_router
+from src.modules.auth.api import router as auth_router
+
+
 
 # 使用上下文管理器感知项目的生命周期  （主要是项目的启动和停止）
 from contextlib import asynccontextmanager, contextmanager
@@ -34,8 +37,9 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     
     # 注册路由
-    app.include_router(user_router,prefix="/api/v1/users")  # 注册用户路由 ，前缀为 /api/v1/users
+    app.include_router(user_router,prefix="/api/v1")  # 注册用户路由 ，前缀为 /api/v1/users
     app.include_router(captcha_router,prefix="/api/v1")  # 注册验证码路由 ，前缀为 /api/v1/
+    app.include_router(auth_router, prefix="/api/v1")
     return app
 
 app = create_app()
