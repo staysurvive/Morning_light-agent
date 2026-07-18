@@ -52,4 +52,7 @@ test/__pycache__/
 
 
 # study descipition
-studydescipition
+/studydescipition/
+
+# extensions
+test_api.http
