@@ -1,6 +1,10 @@
 from datetime import datetime
+from typing import List
+
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.modules.role.model import Role
 from src.core.base_model import BaseModel
 
 
@@ -13,3 +17,9 @@ class User(BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True, comment="是否启用")
     is_superuser: Mapped[bool] = mapped_column(default=False, comment="是否为超级管理员")
     last_login: Mapped[datetime] = mapped_column(default=datetime.now, comment="最后登录时间")
+    # user.roles 可以拿到用户对应的角色
+    roles: Mapped[List[Role]] = relationship(
+        "Role",
+        secondary="user_roles",
+        lazy="selectin",
+    )
