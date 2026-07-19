@@ -4,6 +4,8 @@ from src.modules.role.model import Role
 from sqlalchemy import select
 
 class RoleRepository(BaseRepository[Role]):
+    SEARCH_FIELDS = ["name","code"]
+
     def __init__(self, db: AsyncSession):
         super().__init__(Role, db)
 
@@ -19,3 +21,7 @@ class RoleRepository(BaseRepository[Role]):
         stmt = select(Role).where(Role.id.in_(ids))
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    # 分页搜索
+    async def search_page(self, offset: int, limit: int, keyword: str | None) -> tuple[list[Role], int]:
+        return await  self.get_page(offset,limit,keyword,self.SEARCH_FIELDS)

@@ -1,5 +1,5 @@
 # service 负责做业务逻辑 ， 与数据库交互
-
+from dns import node
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import BizException
 from src.modules.user.model import User
@@ -61,3 +61,7 @@ class UserService:
     #     user.roles   如果懒加载，一下，触发数据库查询即可
     # 直接复用 get_user 即可
         return user
+
+
+    async def search_page(self, offset: int, limit: int,keyword: str| None) -> tuple[list[User], int]:
+        return await self.repo.search_page(offset, limit, keyword)

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.infra.database import get_db
-from src.core.base_schema import ResponseSchema
+from src.core.base_schema import ResponseSchema, PageResult
 from src.modules.user.schema import UserAssignRoles, UserCreate, UserRead, UserWithRolesRead
 from src.modules.user.service import UserService
-from src.core.deps import get_current_user
+from src.core.deps import get_current_user, PageParams
 from src.modules.user.model import User
 
 router = APIRouter(prefix="/users", tags=["User"])
@@ -27,6 +27,25 @@ async def create_user(
 async def get_me(current_user: User = Depends(get_current_user)):
     """获取当前登录用户信息（需要 token）"""
     return ResponseSchema(data=UserRead.model_validate(current_user))
+
+
+@router.get("/search", response_model=ResponseSchema[PageResult[UserRead]], summary="分页搜索用户")
+async def list_search_results(
+    svc: UserService = Depends(get_user_service),
+    params: PageParams = Depends(),
+):
+    users, total_count = await svc.search_page(
+        params.offset,
+        params.page_size,
+        params.keyword,
+    )
+    return ResponseSchema(data=PageResult(
+        items=[UserRead.model_validate(user) for user in users],
+        total=total_count,
+        page=params.page,
+        page_size=params.page_size,
+    ))
+
 
 @router.get("/{user_id}", response_model=ResponseSchema[UserWithRolesRead])
 async def get_user(
@@ -66,3 +85,5 @@ async def get_user_roles(
 ):
     user = await svc.get_user_with_roles(user_id)
     return ResponseSchema(data=[UserWithRolesRead.model_validate(user)])
+
+
