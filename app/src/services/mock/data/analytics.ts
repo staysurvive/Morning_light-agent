@@ -112,11 +112,11 @@ export const mockEvaluationStats: EvaluationStats = {
     { date: '2024-02-07', avgScore: 4.4, evaluations: 1123, positiveRate: 88.5 },
   ],
   byAgent: [
-    { agentId: 'agent-001', agentName: '智能客服助手', avgScore: 4.5, evaluations: 3456, positiveRate: 89.2 },
-    { agentId: 'agent-002', agentName: '技术支持专家', avgScore: 4.2, evaluations: 2345, positiveRate: 85.6 },
-    { agentId: 'agent-003', agentName: '销售顾问', avgScore: 4.6, evaluations: 1876, positiveRate: 91.3 },
-    { agentId: 'agent-004', agentName: '数据分析师', avgScore: 3.9, evaluations: 876, positiveRate: 78.9 },
-    { agentId: 'agent-005', agentName: '内容创作助手', avgScore: 4.4, evaluations: 1212, positiveRate: 88.1 },
+    { agentId: 'agent-001', agentName: '智能客服助手', avgScore: 4.5, evaluations: 3456, positiveRate: 89.2, needsOptimization: 6, trend: 'up' },
+    { agentId: 'agent-002', agentName: '技术支持专家', avgScore: 4.2, evaluations: 2345, positiveRate: 85.6, needsOptimization: 11, trend: 'stable' },
+    { agentId: 'agent-003', agentName: '销售顾问', avgScore: 4.6, evaluations: 1876, positiveRate: 91.3, needsOptimization: 4, trend: 'up' },
+    { agentId: 'agent-004', agentName: '数据分析师', avgScore: 3.9, evaluations: 876, positiveRate: 78.9, needsOptimization: 18, trend: 'down' },
+    { agentId: 'agent-005', agentName: '内容创作助手', avgScore: 4.4, evaluations: 1212, positiveRate: 88.1, needsOptimization: 8, trend: 'up' },
   ],
   issues: [
     { issue: '响应速度慢', count: 234, percentage: 26.7 },

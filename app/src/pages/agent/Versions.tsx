@@ -7,10 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { agentService } from '@/services/agent';
 import type { AgentVersionRead } from '@/services/agent';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function AgentVersions() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [versions, setVersions] = useState<AgentVersionRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [rolling, setRolling] = useState<number | null>(null);
@@ -88,7 +91,7 @@ export default function AgentVersions() {
                     </TableCell>
                     <TableCell>{v.changelog ?? '-'}</TableCell>
                     <TableCell>
-                      {!v.is_current && (
+                    {!v.is_current && can(PERMISSIONS.agentPublish) && (
                         <Button
                           variant="ghost"
                           size="sm"

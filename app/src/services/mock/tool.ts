@@ -31,14 +31,14 @@ export const mockToolService = {
     return tool;
   },
 
-  async createTool(data: any): Promise<ToolRead> {
+  async createTool(data: Pick<ToolRead, 'name' | 'type'> & Partial<ToolRead>): Promise<ToolRead> {
     await delay(400);
     const newTool: ToolRead = { id: mockTools.length + 1, name: data.name, description: data.description || null, type: data.type, status: 'disabled', config: data.config || null, function_definition: data.function_definition || null, call_count_7d: 0, success_rate: 0, avg_latency: 0, created_by: 'admin' };
     mockTools.push(newTool);
     return newTool;
   },
 
-  async updateTool(id: number, data: any): Promise<ToolRead> {
+  async updateTool(id: number, data: Partial<ToolRead>): Promise<ToolRead> {
     await delay(300);
     const idx = mockTools.findIndex(t => t.id === id);
     if (idx === -1) throw new Error('Tool not found');
@@ -68,7 +68,7 @@ export const mockToolService = {
     return tool;
   },
 
-  async testTool(id: number, input: Record<string, any>): Promise<{ success: boolean; output: any; error: string | null; latency_ms: number }> {
+  async testTool(id: number, input: Record<string, unknown>): Promise<{ success: boolean; output: unknown; error: string | null; latency_ms: number }> {
     await delay(1000);
     return { success: true, output: { result: `工具 ${id} 执行成功`, data: input }, error: null, latency_ms: Math.floor(Math.random() * 500 + 100) };
   },

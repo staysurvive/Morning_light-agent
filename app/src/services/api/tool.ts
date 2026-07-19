@@ -6,12 +6,14 @@ export interface ToolRead {
   description: string | null;
   type: string;
   status: string;
-  config: Record<string, any> | null;
-  function_definition: Record<string, any> | null;
+  config: Record<string, unknown> | null;
+  function_definition: Record<string, unknown> | null;
   call_count_7d: number;
   success_rate: number;
   avg_latency: number;
   created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PageResult<T> {
@@ -30,11 +32,11 @@ export const apiToolService = {
     return apiClient.get(`/tools/${id}`);
   },
 
-  async createTool(data: { name: string; description?: string; type: string; config?: Record<string, any>; function_definition?: Record<string, any> }): Promise<ToolRead> {
+  async createTool(data: { name: string; description?: string; type: 'builtin' | 'http_api' | 'custom_function'; config?: Record<string, unknown>; function_definition?: Record<string, unknown> }): Promise<ToolRead> {
     return apiClient.post('/tools', data);
   },
 
-  async updateTool(id: number, data: Partial<{ name: string; description: string; type: string; config: Record<string, any>; function_definition: Record<string, any> }>): Promise<ToolRead> {
+  async updateTool(id: number, data: Partial<{ name: string; description: string; type: 'builtin' | 'http_api' | 'custom_function'; config: Record<string, unknown>; function_definition: Record<string, unknown> }>): Promise<ToolRead> {
     return apiClient.put(`/tools/${id}`, data);
   },
 
@@ -50,7 +52,7 @@ export const apiToolService = {
     return apiClient.post(`/tools/${id}/disable`);
   },
 
-  async testTool(id: number, input: Record<string, any>): Promise<{ success: boolean; output: any; error: string | null; latency_ms: number }> {
+  async testTool(id: number, input: Record<string, unknown>): Promise<{ success: boolean; output: unknown; error: string | null; latency_ms: number }> {
     return apiClient.post(`/tools/${id}/test`, { input });
   },
 };

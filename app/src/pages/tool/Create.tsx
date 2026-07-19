@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,30 +14,62 @@ interface ToolParameter {
 }
 
 export default function ToolCreate() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', description: '', type: 'api',
+    name: '', description: '', type: 'http_api' as 'builtin' | 'http_api' | 'custom_function',
     config: { method: 'GET', url: '', headers: {} as Record<string, string>, timeout: 10000 },
+    customCode: '',
+    runtime: 'python3.13',
     parameters: [] as ToolParameter[],
   });
   const [newHeader, setNewHeader] = useState({ key: '', value: '' });
   const [newParam, setNewParam] = useState<ToolParameter>({ name: '', type: 'string', required: true, description: '' });
 
+  useEffect(() => {
+    if (!id) return;
+    toolService.getTool(Number(id)).then((tool) => {
+      const config = (tool.config ?? {}) as Record<string, unknown>;
+      setFormData({
+        name: tool.name,
+        description: tool.description ?? '',
+        type: tool.type as 'builtin' | 'http_api' | 'custom_function',
+        config: {
+          method: String(config.method ?? 'GET'),
+          url: String(config.url ?? ''),
+          headers: (config.headers as Record<string, string> | undefined) ?? {},
+          timeout: Number(config.timeout ?? 10000),
+        },
+        customCode: String(config.code ?? ''),
+        runtime: String(config.runtime ?? 'python3.13'),
+        parameters: [],
+      });
+    }).catch((error: unknown) => console.error('加载工具失败:', error));
+  }, [id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
+      const normalizedName = formData.name.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
       const function_definition = {
-        name: formData.name.toLowerCase().replace(/\s+/g, '_'),
+        name: normalizedName || `tool_${id ?? 'function'}`,
         description: formData.description,
         parameters: {
           type: 'object',
-          properties: formData.parameters.reduce((acc, p) => { acc[p.name] = { type: p.type, description: p.description }; return acc; }, {} as Record<string, any>),
+          properties: formData.parameters.reduce((acc, p) => { acc[p.name] = { type: p.type, description: p.description }; return acc; }, {} as Record<string, { type: string; description: string }>),
           required: formData.parameters.filter((p) => p.required).map((p) => p.name),
         },
       };
-      await toolService.createTool({ name: formData.name, description: formData.description, type: formData.type, config: formData.config, function_definition });
+      const config = formData.type === 'http_api'
+        ? formData.config
+        : formData.type === 'custom_function'
+          ? { code: formData.customCode, runtime: formData.runtime }
+          : {};
+      const payload = { name: formData.name, description: formData.description, type: formData.type, config, function_definition };
+      if (id) await toolService.updateTool(Number(id), payload);
+      else await toolService.createTool(payload);
       navigate('/tools');
     } catch (error) {
       console.error('创建工具失败:', error);
@@ -54,8 +86,9 @@ export default function ToolCreate() {
   };
 
   const removeHeader = (key: string) => {
-    const { [key]: _, ...rest } = formData.config.headers;
-    setFormData({ ...formData, config: { ...formData.config, headers: rest } });
+    const headers = { ...formData.config.headers };
+    delete headers[key];
+    setFormData({ ...formData, config: { ...formData.config, headers } });
   };
 
   const addParameter = () => {
@@ -74,13 +107,13 @@ export default function ToolCreate() {
             <ArrowLeft className="h-4 w-4 mr-1" />返回
           </Button>
           <div>
-            <h1 className="text-xl font-bold">注册工具</h1>
+            <h1 className="text-xl font-bold">{id ? '编辑工具' : '注册工具'}</h1>
             <p className="text-xs text-muted-foreground">配置新的工具供 Agent 调用</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => navigate('/tools')}>取消</Button>
-          <Button type="submit" disabled={loading}>{loading ? '创建中...' : '创建工具'}</Button>
+          <Button type="submit" disabled={loading}>{loading ? '保存中...' : id ? '保存工具' : '创建工具'}</Button>
         </div>
       </div>
 
@@ -101,12 +134,12 @@ export default function ToolCreate() {
               </div>
               <div className="space-y-1.5">
                 <Label>工具类型 *</Label>
-                <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v as 'builtin' | 'http_api' | 'custom_function' })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="api">HTTP API</SelectItem>
-                    <SelectItem value="function">自定义函数</SelectItem>
-                    <SelectItem value="database">数据库</SelectItem>
+                    <SelectItem value="http_api">HTTP API</SelectItem>
+                    <SelectItem value="custom_function">自定义函数</SelectItem>
+                    <SelectItem value="builtin">内置工具</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -116,7 +149,7 @@ export default function ToolCreate() {
 
         {/* 右：API配置 + 参数 */}
         <div className="overflow-y-auto p-6 space-y-4">
-          {formData.type === 'api' && (
+          {formData.type === 'http_api' && (
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">HTTP API 配置</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -156,6 +189,22 @@ export default function ToolCreate() {
                     <Input placeholder="Header值" value={newHeader.value} onChange={(e) => setNewHeader({ ...newHeader, value: e.target.value })} className="flex-1" />
                     <Button type="button" variant="outline" size="sm" onClick={addHeader}><Plus className="h-4 w-4" /></Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {formData.type === 'custom_function' && (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">函数配置</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>运行时标识</Label>
+                  <Input value={formData.runtime} onChange={(e) => setFormData({ ...formData, runtime: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>代码</Label>
+                  <Textarea className="min-h-48 font-mono" value={formData.customCode} onChange={(e) => setFormData({ ...formData, customCode: e.target.value })} />
                 </div>
               </CardContent>
             </Card>

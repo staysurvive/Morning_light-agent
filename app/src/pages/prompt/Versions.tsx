@@ -7,10 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { promptService } from '@/services/prompt';
 import type { PromptVersionRead } from '@/services/prompt';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function PromptVersions() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [versions, setVersions] = useState<PromptVersionRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [rolling, setRolling] = useState<number | null>(null);
@@ -90,7 +93,7 @@ export default function PromptVersions() {
                         {v.is_current ? <Badge>当前</Badge> : <Badge variant="outline">历史</Badge>}
                       </TableCell>
                       <TableCell>
-                        {!v.is_current && (
+                          {!v.is_current && can(PERMISSIONS.promptPublish) && (
                           <Button
                             variant="ghost"
                             size="sm"

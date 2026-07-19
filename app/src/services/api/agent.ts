@@ -1,5 +1,21 @@
 import { apiClient } from './client';
 
+export interface AgentConfig {
+  temperature?: number
+  max_tokens?: number
+  top_p?: number
+  system_prompt?: string
+  rag_enabled?: boolean
+  retrieval_strategy?: string
+  top_k?: number
+  similarity_threshold?: number
+  tools_enabled?: boolean
+  welcome_message?: string
+  max_turns?: number
+  timeout?: number
+  [key: string]: unknown
+}
+
 export interface AgentRead {
   id: number;
   name: string;
@@ -7,7 +23,8 @@ export interface AgentRead {
   type: string;
   status: string;
   model_id: number | null;
-  config: Record<string, any> | null;
+  model_name: string | null;
+  config: AgentConfig | null;
   success_rate: number;
   call_count_7d: number;
   version: string;
@@ -20,7 +37,7 @@ export interface AgentVersionRead {
   id: number;
   agent_id: number;
   version: string;
-  config: Record<string, any> | null;
+  config: AgentConfig | null;
   changelog: string | null;
   is_current: boolean;
   published_by: string | null;
@@ -43,11 +60,11 @@ export const apiAgentService = {
     return apiClient.get(`/agents/${id}`);
   },
 
-  async createAgent(data: { name: string; type: string; description?: string; model_id?: number; config?: Record<string, any> }): Promise<AgentRead> {
+  async createAgent(data: { name: string; type: string; description?: string; model_id?: number; config?: AgentConfig }): Promise<AgentRead> {
     return apiClient.post('/agents', data);
   },
 
-  async updateAgent(id: number, data: Partial<{ name: string; description: string; type: string; model_id: number; config: Record<string, any> }>): Promise<AgentRead> {
+  async updateAgent(id: number, data: Partial<{ name: string; description: string; type: string; model_id: number; config: AgentConfig }>): Promise<AgentRead> {
     return apiClient.put(`/agents/${id}`, data);
   },
 

@@ -1,17 +1,16 @@
 # 辰光Agent平台
 
-企业级AI Agent管理平台，提供Agent全生命周期管理、知识库管理、Prompt工程、模型管理、工具编排、对话日志分析等能力。
+AI Agent 管理平台前端，默认连接仓库中的 FastAPI 后端，提供配置、版本、知识文档、工具、会话和系统治理页面。
 
 ## 技术栈
 
-React 18 + TypeScript + Vite + Shadcn UI + Tailwind CSS + React Router
+React 19 + TypeScript + Vite + Shadcn UI + Tailwind CSS + React Router
 
 ## 快速开始
 
-```bash
-#  node版本： v22.18.0
-cd chenguang-agent-platform
-npm install
+```powershell
+cd D:\Morning_light-agent\app
+npm ci
 npm run dev
 ```
 
@@ -20,24 +19,28 @@ npm run dev
 | 模块 | 路由 | 说明 |
 |------|------|------|
 | 工作台 | `/` | 全局数据大盘、告警、资源用量 |
-| Agent管理 | `/agents` | Agent CRUD、版本管理、发布、测试、监控 |
-| 模型管理 | `/models` | 模型供应商配置、模型列表、负载均衡 |
-| Prompt管理 | `/prompts` | Prompt编辑器、版本管理、变量、测试 |
-| 知识库(RAG) | `/knowledge` | 知识库、文档管理、分段管理、检索测试 |
-| 工具管理 | `/tools` | 工具注册、测试、权限、调用日志 |
+| Agent管理 | `/agents` | Agent CRUD、版本、发布、回滚和启停状态 |
+| 模型管理 | `/models` | 模型供应商、连接测试和模型元数据 |
+| Prompt管理 | `/prompts` | Prompt 编辑器、变量预览、发布、版本和回滚 |
+| 知识库 | `/knowledge` | 知识库、文档、分段和本地全文检索测试 |
+| 工具管理 | `/tools` | 工具配置、HTTP 测试、启停和测试指标 |
 | 对话日志 | `/conversations` | 对话记录、链路追踪、人工标注 |
 | 数据统计 | `/analytics` | 调用量、Token消耗、费用、效果评估 |
-| 系统管理 | `/system` | 用户、角色、API Key、审计日志、告警 |
+| 系统管理 | `/system` | 用户、角色、权限、API Key、审计、告警和设置 |
 
 ## Mock/API 切换
 
-```bash
-# Mock模式（默认）
+默认连接 `http://127.0.0.1:8000/api/v1`，账号、密码和验证码均由后端校验：
+
+```powershell
 npm run dev
 
-# 连接后端
-VITE_USE_MOCK=false VITE_API_BASE=http://localhost:8080/api npm run dev
+# 仅在纯前端原型开发时显式启用 Mock
+$env:VITE_USE_MOCK = 'true'
+npm run dev
 ```
+
+Mock 演示账号只用于显式启用的前端原型模式。真实模式的账号、密码和验证码全部由后端校验。完整运行说明、真实能力边界与功能变更记录见 `..\docs\PROJECT_GUIDE_FOR_SOL.md`。
 
 ## 设计文档
 

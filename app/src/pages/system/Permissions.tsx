@@ -1,275 +1,172 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, Edit, Trash2, ShieldAlert } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Edit, Eye, KeyRound, Layers3, Plus, Search, Trash2 } from 'lucide-react'
+import InlineNotice from '@/components/InlineNotice'
+import Modal from '@/components/Modal'
+import Pagination from '@/components/Pagination'
+import { useAuthorization } from '@/hooks/useAuthorization'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import Pagination from '@/components/Pagination'
-import { USE_MOCK } from '@/services/config'
-import { apiSystemService } from '@/services/api/system'
-import type { BackendPermission } from '@/services/api/system'
-import { mockSystemService } from '@/services/mock/system'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { accessService, type PermissionRead } from '@/services/access'
+import { PERMISSIONS } from '@/services/permissions'
 
-const PAGE_SIZE = 5
+const DEFAULT_PAGE_SIZE = 10
 
-// 从 code 推断模块标签，如 agent:read → agent
-function getModuleTag(code: string) {
-  const module = code.split(':')[0] || code
-  const labels: Record<string, string> = {
-    agent: 'Agent', model: '模型', prompt: 'Prompt', knowledge: '知识库',
-    tool: '工具', conversation: '对话', analytics: '统计', system: '系统',
-  }
-  return labels[module] || module
+const getModule = (code: string) => code.split(/[:_]/)[0] || 'other'
+
+interface PermissionFormModalProps {
+  permission?: PermissionRead
+  onClose: () => void
+  onSaved: (message: string) => void
 }
 
-const MODULE_COLORS: Record<string, string> = {
-  agent: 'bg-blue-100 text-blue-700',
-  model: 'bg-purple-100 text-purple-700',
-  prompt: 'bg-yellow-100 text-yellow-700',
-  knowledge: 'bg-green-100 text-green-700',
-  tool: 'bg-orange-100 text-orange-700',
-  conversation: 'bg-pink-100 text-pink-700',
-  analytics: 'bg-cyan-100 text-cyan-700',
-  system: 'bg-red-100 text-red-700',
-}
-
-function ModuleBadge({ code }: { code: string }) {
-  const module = code.split(':')[0] || code
-  const cls = MODULE_COLORS[module] || 'bg-gray-100 text-gray-700'
-  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{getModuleTag(code)}</span>
-}
-
-// ---- 创建/编辑权限弹窗 ----
-function PermissionFormDialog({ open, perm, onClose, onSaved }: {
-  open: boolean; perm?: BackendPermission | null; onClose: () => void; onSaved: () => void
-}) {
-  const [form, setForm] = useState({ code: '', name: '', description: '' })
-  const [loading, setLoading] = useState(false)
+function PermissionFormModal({ permission, onClose, onSaved }: PermissionFormModalProps) {
+  const [form, setForm] = useState({ code: permission?.code ?? '', name: permission?.name ?? '', description: permission?.description ?? '' })
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (open) {
-      setForm({ code: perm?.code || '', name: perm?.name || '', description: perm?.description || '' })
-      setError('')
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!form.code.trim() || !form.name.trim()) {
+      setError('请填写权限编码和名称')
+      return
     }
-  }, [open, perm])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.code || !form.name) { setError('请填写权限编码和名称'); return }
-    setLoading(true); setError('')
+    setSubmitting(true)
+    setError('')
     try {
-      if (USE_MOCK) {
-        if (perm) await mockSystemService.updatePermission(String(perm.id), { name: form.name, description: form.description || undefined })
-        else await mockSystemService.createPermission({ code: form.code, name: form.name, description: form.description || undefined })
+      if (permission) {
+        await accessService.updatePermission(permission.id, { name: form.name.trim(), description: form.description.trim() || null })
+        onSaved(`权限“${form.name.trim()}”已更新`)
       } else {
-        if (perm) await apiSystemService.updatePermission(perm.id, { name: form.name, description: form.description || undefined })
-        else await apiSystemService.createPermission({ code: form.code, name: form.name, description: form.description || undefined })
+        await accessService.createPermission({ code: form.code.trim(), name: form.name.trim(), description: form.description.trim() || null })
+        onSaved(`权限“${form.name.trim()}”已创建`)
       }
-      onSaved(); onClose()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '操作失败')
-    } finally { setLoading(false) }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '保存权限失败')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <Card className="w-full max-w-md shadow-2xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5" />
-            {perm ? '编辑权限' : '创建权限'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <Label>权限编码</Label>
-              <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                placeholder="如: agent:read（模块:操作）" disabled={loading || !!perm} />
-              <p className="text-xs text-muted-foreground">格式建议：模块:操作，如 agent:read、model:create</p>
-            </div>
-            <div className="space-y-1">
-              <Label>权限名称</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="如: Agent查看" disabled={loading} />
-            </div>
-            <div className="space-y-1">
-              <Label>描述</Label>
-              <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="可选，说明该权限的用途" disabled={loading} />
-            </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>取消</Button>
-              <Button type="submit" disabled={loading}>{loading ? '保存中...' : '保存'}</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <Modal title={permission ? '编辑权限' : '创建权限'} description="权限编码采用“资源_动作”，创建后不可修改。" onClose={onClose} footer={<div className="flex justify-end gap-2"><Button disabled={submitting} onClick={onClose} variant="outline">取消</Button><Button disabled={submitting} form="permission-form" type="submit">{submitting ? '保存中...' : '保存权限'}</Button></div>}>
+      <form className="space-y-4" id="permission-form" onSubmit={handleSubmit}>
+        <div className="space-y-2"><Label htmlFor="permission-code">权限编码</Label><Input disabled={Boolean(permission)} id="permission-code" onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))} placeholder="例如：agent_read" value={form.code} /></div>
+        <div className="space-y-2"><Label htmlFor="permission-name">权限名称</Label><Input id="permission-name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="例如：查看 Agent" value={form.name} /></div>
+        <div className="space-y-2"><Label htmlFor="permission-description">描述</Label><Input id="permission-description" onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="说明权限允许的操作" value={form.description} /></div>
+        {error && <InlineNotice kind="error" message={error} />}
+      </form>
+    </Modal>
   )
 }
 
-// ---- 主页面 ----
-export default function SystemPermissions() {
-  const [perms, setPerms] = useState<BackendPermission[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
+function PermissionDetailModal({ permissionId, onClose }: { permissionId: number; onClose: () => void }) {
+  const [permission, setPermission] = useState<PermissionRead | null>(null)
+  const [error, setError] = useState('')
 
-  const [formOpen, setFormOpen] = useState(false)
-  const [editPerm, setEditPerm] = useState<BackendPermission | null>(null)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<BackendPermission | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      if (USE_MOCK) {
-        const res = await mockSystemService.getPermissionsPaged({ page, pageSize: PAGE_SIZE, keyword: search || undefined })
-        setPerms(res.data as BackendPermission[])
-        setTotal(res.total)
-      } else {
-        const res = await apiSystemService.searchPermissions({ page, page_size: PAGE_SIZE, keyword: search || undefined })
-        setPerms(res.items)
-        setTotal(res.total)
-      }
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }, [page, search])
-
-  useEffect(() => { load() }, [load])
-
-  const handleSearch = (v: string) => { setSearch(v); setPage(1) }
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      if (USE_MOCK) await mockSystemService.deletePermission(String(deleteTarget.id))
-      else await apiSystemService.deletePermission(deleteTarget.id)
-      load()
-    } catch (err) { console.error(err) }
-    finally { setDeleteOpen(false); setDeleteTarget(null) }
-  }
-
-  // 统计各模块权限数
-  const moduleStats = perms.reduce<Record<string, number>>((acc, p) => {
-    const m = p.code.split(':')[0] || 'other'
-    acc[m] = (acc[m] || 0) + 1
-    return acc
-  }, {})
+  useEffect(() => {
+    let active = true
+    accessService.getPermission(permissionId)
+      .then((result) => { if (active) setPermission(result) })
+      .catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : '加载权限详情失败') })
+    return () => { active = false }
+  }, [permissionId])
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">权限管理</h1>
-          <p className="text-muted-foreground mt-1">管理系统权限项，分配给角色使用</p>
-        </div>
-        <Button onClick={() => { setEditPerm(null); setFormOpen(true) }}>
-          <Plus className="h-4 w-4 mr-2" />创建权限
-        </Button>
-      </div>
+    <Modal title="权限详情" description={`权限 ID：${permissionId}`} onClose={onClose} width="sm">
+      {error ? <InlineNotice kind="error" message={error} /> : !permission ? <p className="py-8 text-center text-sm text-muted-foreground">正在加载权限...</p> : <dl className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-3 text-sm"><dt className="text-muted-foreground">权限名称</dt><dd className="font-medium">{permission.name}</dd><dt className="text-muted-foreground">权限编码</dt><dd><code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{permission.code}</code></dd><dt className="text-muted-foreground">所属模块</dt><dd><Badge variant="outline">{getModule(permission.code)}</Badge></dd><dt className="text-muted-foreground">描述</dt><dd>{permission.description || '无描述'}</dd></dl>}
+    </Modal>
+  )
+}
 
-      {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">权限总数</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{total}</div></CardContent>
-        </Card>
-        {Object.entries(moduleStats).slice(0, 3).map(([mod, count]) => (
-          <Card key={mod}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{getModuleTag(mod + ':x')} 模块</CardTitle>
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{count}</div></CardContent>
-          </Card>
-        ))}
-      </div>
+export default function SystemPermissions() {
+  const { can } = useAuthorization()
+  const [permissions, setPermissions] = useState<PermissionRead[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [keyword, setKeyword] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [formPermission, setFormPermission] = useState<PermissionRead | 'new' | null>(null)
+  const [detailPermissionId, setDetailPermissionId] = useState<number | null>(null)
+  const [deletePermission, setDeletePermission] = useState<PermissionRead | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-      <Card>
-        <CardHeader>
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="搜索权限编码、名称..." value={search}
-              onChange={e => handleSearch(e.target.value)} className="pl-9" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">ID</TableHead>
-                <TableHead className="w-24">模块</TableHead>
-                <TableHead>权限编码</TableHead>
-                <TableHead>权限名称</TableHead>
-                <TableHead>描述</TableHead>
-                <TableHead className="w-24">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">加载中...</TableCell></TableRow>
-              ) : perms.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">暂无数据</TableCell></TableRow>
-              ) : perms.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell className="text-muted-foreground text-sm">{p.id}</TableCell>
-                  <TableCell><ModuleBadge code={p.code} /></TableCell>
-                  <TableCell>
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{p.code}</code>
-                  </TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{p.description || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" title="编辑"
-                        onClick={() => { setEditPerm(p); setFormOpen(true) }}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" title="删除"
-                        onClick={() => { setDeleteTarget(p); setDeleteOpen(true) }}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
-        </CardContent>
-      </Card>
+  useEffect(() => {
+    let active = true
+    accessService.searchPermissions({ page, page_size: pageSize, keyword: keyword || undefined })
+      .then((result) => { if (active) { setPermissions(result.items); setTotal(result.total); setError('') } })
+      .catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : '加载权限失败') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [keyword, page, pageSize, refreshKey])
 
-      <PermissionFormDialog open={formOpen} perm={editPerm}
-        onClose={() => setFormOpen(false)} onSaved={load} />
+  const refresh = (message: string) => {
+    setFormPermission(null)
+    setSuccess(message)
+    setLoading(true)
+    setRefreshKey((current) => current + 1)
+  }
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除权限「{deleteTarget?.name}（{deleteTarget?.code}）」吗？
-              删除后已分配该权限的角色将失去对应访问能力，此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 text-white hover:bg-red-700">删除</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault()
+    setLoading(true)
+    setKeyword(searchInput.trim())
+    setPage(1)
+    setRefreshKey((current) => current + 1)
+  }
+
+  const handlePageChange = (nextPage: number) => {
+    setLoading(true)
+    setPage(nextPage)
+  }
+
+  const handlePageSizeChange = (nextPageSize: number) => {
+    setLoading(true)
+    setPageSize(nextPageSize)
+    setPage(1)
+  }
+
+  const handleDelete = async () => {
+    if (!deletePermission) return
+    setDeleting(true)
+    setError('')
+    setSuccess('')
+    try {
+      await accessService.deletePermission(deletePermission.id)
+      const moveToPreviousPage = permissions.length === 1 && page > 1
+      setDeletePermission(null)
+      setSuccess(`权限“${deletePermission.name}”已删除`)
+      setLoading(true)
+      if (moveToPreviousPage) setPage((current) => current - 1)
+      else setRefreshKey((current) => current + 1)
+    } catch (caught) {
+      setDeletePermission(null)
+      setError(caught instanceof Error ? caught.message : '删除权限失败')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const moduleCount = new Set(permissions.map((permission) => getModule(permission.code))).size
+
+  return (
+    <div className="space-y-5 p-4 sm:p-6">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h1 className="text-2xl font-semibold text-gray-950">权限管理</h1><p className="mt-1 text-sm text-muted-foreground">维护可分配给角色的原子权限。</p></div>{can(PERMISSIONS.permissionCreate) && <Button onClick={() => setFormPermission('new')}><Plus className="h-4 w-4" />创建权限</Button>}</div>
+      {success && <InlineNotice kind="success" message={success} />}{error && <InlineNotice kind="error" message={error} />}
+      <div className="grid gap-3 sm:grid-cols-3"><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">权限总数</CardTitle></CardHeader><CardContent className="flex items-center justify-between"><span className="text-2xl font-semibold">{total}</span><KeyRound className="h-5 w-5 text-blue-600" /></CardContent></Card><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">本页模块数</CardTitle></CardHeader><CardContent className="flex items-center justify-between"><span className="text-2xl font-semibold">{moduleCount}</span><Layers3 className="h-5 w-5 text-emerald-600" /></CardContent></Card><Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">当前页</CardTitle></CardHeader><CardContent><span className="text-2xl font-semibold">{page}</span></CardContent></Card></div>
+      <Card><CardHeader className="pb-3"><form className="flex max-w-lg flex-col gap-2 sm:flex-row" onSubmit={handleSearch}><div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" onChange={(event) => setSearchInput(event.target.value)} placeholder="搜索权限编码或名称" value={searchInput} /></div><Button type="submit" variant="outline">搜索</Button></form></CardHeader><CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="w-20">ID</TableHead><TableHead className="w-28">模块</TableHead><TableHead>权限</TableHead><TableHead>描述</TableHead><TableHead className="w-36 text-right">操作</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell className="h-28 text-center text-muted-foreground" colSpan={5}>正在加载权限...</TableCell></TableRow> : permissions.length === 0 ? <TableRow><TableCell className="h-28 text-center text-muted-foreground" colSpan={5}>没有符合条件的权限</TableCell></TableRow> : permissions.map((permission) => <TableRow key={permission.id}><TableCell className="text-muted-foreground">{permission.id}</TableCell><TableCell><Badge variant="outline">{getModule(permission.code)}</Badge></TableCell><TableCell><div className="font-medium">{permission.name}</div><code className="text-xs text-muted-foreground">{permission.code}</code></TableCell><TableCell className="max-w-sm text-sm text-muted-foreground">{permission.description || '无描述'}</TableCell><TableCell><div className="flex justify-end gap-1"><Button aria-label={`查看 ${permission.name}`} onClick={() => setDetailPermissionId(permission.id)} size="icon" title="查看详情" variant="ghost"><Eye className="h-4 w-4" /></Button>{can(PERMISSIONS.permissionUpdate) && <Button aria-label={`编辑 ${permission.name}`} onClick={() => setFormPermission(permission)} size="icon" title="编辑权限" variant="ghost"><Edit className="h-4 w-4" /></Button>}{can(PERMISSIONS.permissionDelete) && <Button aria-label={`删除 ${permission.name}`} onClick={() => setDeletePermission(permission)} size="icon" title="删除权限" variant="ghost"><Trash2 className="h-4 w-4 text-red-600" /></Button>}</div></TableCell></TableRow>)}</TableBody></Table></div><Pagination disabled={loading} onChange={handlePageChange} onPageSizeChange={handlePageSizeChange} page={page} pageSize={pageSize} total={total} /></CardContent></Card>
+      {formPermission && <PermissionFormModal permission={formPermission === 'new' ? undefined : formPermission} onClose={() => setFormPermission(null)} onSaved={refresh} />}
+      {detailPermissionId !== null && <PermissionDetailModal permissionId={detailPermissionId} onClose={() => setDetailPermissionId(null)} />}
+      <AlertDialog open={Boolean(deletePermission)} onOpenChange={(open) => { if (!open) setDeletePermission(null) }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>删除权限</AlertDialogTitle><AlertDialogDescription>确定删除权限“{deletePermission?.name}（{deletePermission?.code}）”吗？已分配该权限的角色将失去对应能力。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel><AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" disabled={deleting} onClick={handleDelete}>{deleting ? '删除中...' : '确认删除'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   )
 }

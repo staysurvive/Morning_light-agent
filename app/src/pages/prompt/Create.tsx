@@ -16,6 +16,8 @@ import {
 import { Plus, Trash2, Loader2, ArrowLeft, History } from 'lucide-react';
 import { promptService } from '@/services/prompt';
 import type { PromptVariableSchema } from '@/services/prompt';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 const CATEGORIES = [
   { value: 'customer-service', label: '客服' },
@@ -35,6 +37,8 @@ export default function PromptCreate() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const { can } = useAuthorization();
+  const canPublish = can(PERMISSIONS.promptPublish);
 
   const [pageLoading, setPageLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -189,9 +193,11 @@ export default function PromptCreate() {
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
             保存草稿
           </Button>
-          <Button disabled={saving} onClick={() => setPublishDialogOpen(true)}>
-            发布
-          </Button>
+          {canPublish && (
+            <Button disabled={saving} onClick={() => setPublishDialogOpen(true)}>
+              发布
+            </Button>
+          )}
         </div>
       </div>
 
@@ -401,12 +407,12 @@ export default function PromptCreate() {
       </div>
 
       {/* 发布确认弹窗 */}
-      <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+      <AlertDialog open={canPublish && publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>发布 Prompt</AlertDialogTitle>
             <AlertDialogDescription>
-              发布后将生成新版本，已关联此 Prompt 的 Agent 将使用新版本内容。
+              发布后将生成新版本，并把该版本标记为当前版本。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-6 pb-2 space-y-1.5">

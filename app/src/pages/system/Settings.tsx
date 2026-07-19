@@ -7,21 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { systemService } from '@/services/system';
 import type { SystemSettings } from '@/services/types/system';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function SystemSettings() {
+  const { can } = useAuthorization();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
 
-  const loadSettings = async () => {
-    try {
-      const data = await systemService.getSettings();
-      setSettings(data);
-    } catch (error) {
-      console.error('加载设置失败:', error);
-    }
-  };
-
   useEffect(() => {
-    loadSettings();
+    systemService.getSettings()
+      .then(setSettings)
+      .catch((error: unknown) => console.error('加载设置失败:', error));
   }, []);
 
   const handleSave = async () => {
@@ -45,10 +41,10 @@ export default function SystemSettings() {
           <h1 className="text-3xl font-bold">系统配置</h1>
           <p className="text-muted-foreground mt-1">管理系统基本设置</p>
         </div>
-        <Button onClick={handleSave}>
+        {can(PERMISSIONS.settingsUpdate) && <Button onClick={handleSave}>
           <Save className="h-4 w-4 mr-2" />
           保存设置
-        </Button>
+        </Button>}
       </div>
 
       <Tabs defaultValue="basic" className="space-y-4">

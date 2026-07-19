@@ -10,10 +10,13 @@ import { Loader2 } from 'lucide-react';
 import { knowledgeService } from '@/services/knowledge';
 import type { SegmentRead, DocumentRead } from '@/services/knowledge';
 import Pagination from '@/components/Pagination';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 const PAGE_SIZE = 5;
 
 export default function KnowledgeSegments() {
+  const { can } = useAuthorization();
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const kbId = Number(id);
@@ -111,9 +114,9 @@ export default function KnowledgeSegments() {
                           <Button size="sm" onClick={() => handleSave(seg)}>保存</Button>
                           <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>取消</Button>
                         </>
-                      ) : (
+                      ) : can(PERMISSIONS.knowledgeSegmentUpdate) ? (
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(seg)}>编辑</Button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </CardHeader>

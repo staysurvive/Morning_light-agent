@@ -10,26 +10,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { knowledgeService } from '@/services/knowledge';
 import type { KnowledgeBaseRead } from '@/services/knowledge';
 import Pagination from '@/components/Pagination';
-
-const PAGE_SIZE = 5;
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function KnowledgeList() {
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [kbs, setKbs] = useState<KnowledgeBaseRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [kbToDelete, setKbToDelete] = useState<number | null>(null);
 
   useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { loadKBs(); }, [page, search]);
+  useEffect(() => { loadKBs(); }, [page, pageSize, search]);
 
   const loadKBs = async () => {
     try {
       setLoading(true);
-      const res = await knowledgeService.getKnowledgeBases({ page, page_size: PAGE_SIZE, keyword: search || undefined });
+      const res = await knowledgeService.getKnowledgeBases({ page, page_size: pageSize, keyword: search || undefined });
       setKbs(res.items);
       setTotal(res.total);
     } catch (error) {
@@ -74,9 +76,9 @@ export default function KnowledgeList() {
           <h1 className="text-3xl font-bold">知识库管理</h1>
           <p className="text-muted-foreground mt-1">管理RAG知识库和文档</p>
         </div>
-        <Button onClick={() => navigate('/knowledge/create')}>
+        {can(PERMISSIONS.knowledgeCreate) && <Button onClick={() => navigate('/knowledge/create')}>
           <Plus className="h-4 w-4 mr-2" />创建知识库
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -112,7 +114,7 @@ export default function KnowledgeList() {
             <TableHeader>
               <TableRow>
                 <TableHead>名称</TableHead>
-                <TableHead>嵌入模型</TableHead>
+                <TableHead>模型标识（预留）</TableHead>
                 <TableHead>文档数</TableHead>
                 <TableHead>分段数</TableHead>
                 <TableHead>状态</TableHead>
@@ -143,19 +145,19 @@ export default function KnowledgeList() {
                       <Button variant="ghost" size="sm" onClick={() => navigate(`/knowledge/${kb.id}`)}>
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/knowledge/${kb.id}`)}>
+                      {can(PERMISSIONS.knowledgeUpdate) && <Button variant="ghost" size="sm" onClick={() => navigate(`/knowledge/${kb.id}`)}>
                         <Settings className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setKbToDelete(kb.id); setDeleteDialogOpen(true); }}>
+                      </Button>}
+                      {can(PERMISSIONS.knowledgeDelete) && <Button variant="ghost" size="sm" onClick={() => { setKbToDelete(kb.id); setDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 
@@ -163,7 +165,7 @@ export default function KnowledgeList() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除这个知识库吗？所有相关文档和向量数据都将被删除。</AlertDialogDescription>
+            <AlertDialogDescription>确定要删除这个知识库吗？所有相关文档、源文件和分段都将被删除。</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>

@@ -11,7 +11,7 @@ from src.infra.redis_cache import get_redis_client
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 def get_auth_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     redis: Redis = Depends(get_redis_client),
 ) -> AuthService:
     return AuthService(db, redis)

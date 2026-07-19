@@ -31,14 +31,14 @@ export const mockPromptService = {
     return prompt;
   },
 
-  async createPrompt(data: any): Promise<PromptRead> {
+  async createPrompt(data: Pick<PromptRead, 'name' | 'content'> & Partial<PromptRead>): Promise<PromptRead> {
     await delay(400);
     const newPrompt: PromptRead = { id: mockPrompts.length + 1, name: data.name, description: data.description || null, category: data.category || 'general', tags: data.tags || [], content: data.content, variables: data.variables || [], version: 'v1.0', status: 'draft', created_by: 'admin' };
     mockPrompts.push(newPrompt);
     return newPrompt;
   },
 
-  async updatePrompt(id: number, data: any): Promise<PromptRead> {
+  async updatePrompt(id: number, data: Partial<PromptRead>): Promise<PromptRead> {
     await delay(300);
     const idx = mockPrompts.findIndex(p => p.id === id);
     if (idx === -1) throw new Error('Prompt not found');
@@ -53,6 +53,7 @@ export const mockPromptService = {
   },
 
   async publishPrompt(id: number, changelog?: string): Promise<PromptRead> {
+    void changelog
     await delay(400);
     const prompt = mockPrompts.find(p => p.id === id);
     if (!prompt) throw new Error('Prompt not found');

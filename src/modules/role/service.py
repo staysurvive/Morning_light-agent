@@ -26,7 +26,7 @@ class RoleService:
         # 查不到抛异常
         role = await self.repo.get_by_id(role_id)
         if not role:
-            raise BizException(f"角色 {role_id} 不存在")
+            raise BizException(code=404, message=f"角色 {role_id} 不存在")
         return role
 
     async def list_roles(self) -> list[Role]:
@@ -44,8 +44,8 @@ class RoleService:
         return role
 
     async def delete_role(self, role_id: int) -> None:
-        await self.repo.delete_by_id(role_id)
-        return None
+        if not await self.repo.delete_by_id(role_id):
+            raise BizException(code=404, message=f"角色 {role_id} 不存在")
 
     async def assign_permissions(self, role_id: int, permission_ids: list[int]) -> Role:
         # 这是本节的重点方法！

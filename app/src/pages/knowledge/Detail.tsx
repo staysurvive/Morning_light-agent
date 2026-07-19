@@ -15,14 +15,17 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Upload, FileText, Trash2, Eye, RefreshCw, CheckCircle, AlertCircle, Loader2, Save, TestTube } from 'lucide-react';
+import { Upload, FileText, Trash2, Eye, RefreshCw, Loader2, Save, TestTube } from 'lucide-react';
 import { knowledgeService } from '@/services/knowledge';
 import type { KnowledgeBaseRead, DocumentRead, SegmentRead, KnowledgeBaseConfig } from '@/services/knowledge';
 import Pagination from '@/components/Pagination';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 const PAGE_SIZE = 5;
 
 export default function KnowledgeDetail() {
+  const { can } = useAuthorization();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const kbId = Number(id);
@@ -62,7 +65,7 @@ export default function KnowledgeDetail() {
         chunk_method: data.chunk_method,
         chunk_size: data.chunk_size,
         chunk_overlap: data.chunk_overlap,
-        retrieval_strategy: data.retrieval_strategy,
+        retrieval_strategy: 'fulltext',
         top_k: data.top_k,
         similarity_threshold: data.similarity_threshold,
       });
@@ -164,14 +167,16 @@ export default function KnowledgeDetail() {
           <p className="text-xs text-muted-foreground">{kb.description}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(`/knowledge/${kbId}/test`)}>
+          {can(PERMISSIONS.knowledgeRetrieve) && <Button variant="outline" size="sm" onClick={() => navigate(`/knowledge/${kbId}/test`)}>
             <TestTube className="h-4 w-4 mr-1" />检索测试
-          </Button>
+          </Button>}
+          {can(PERMISSIONS.knowledgeDocumentManage) && <>
           <input id="doc-upload" type="file" multiple accept=".pdf,.docx,.md,.txt,.html,.csv" onChange={handleUpload} className="hidden" />
           <Button size="sm" disabled={uploading} onClick={() => document.getElementById('doc-upload')?.click()}>
             {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
             {uploading ? '上传中...' : '上传文档'}
           </Button>
+          </>}
         </div>
       </div>
 
@@ -229,14 +234,14 @@ export default function KnowledgeDetail() {
                             <Button variant="ghost" size="sm" title="查看分段" onClick={() => openSegDrawer(doc)} disabled={doc.status !== 'completed'}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {doc.status === 'failed' && (
+                            {doc.status === 'failed' && can(PERMISSIONS.knowledgeDocumentManage) && (
                               <Button variant="ghost" size="sm" title="重试" onClick={() => handleRetry(doc.id)}>
                                 <RefreshCw className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="sm" title="删除" onClick={() => { setDocToDelete(doc.id); setDeleteDialogOpen(true); }}>
+                            {can(PERMISSIONS.knowledgeDocumentManage) && <Button variant="ghost" size="sm" title="删除" onClick={() => { setDocToDelete(doc.id); setDeleteDialogOpen(true); }}>
                               <Trash2 className="h-4 w-4" />
-                            </Button>
+                            </Button>}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -255,7 +260,7 @@ export default function KnowledgeDetail() {
             <div className="grid grid-cols-4 gap-4">
               <Card><CardHeader className="pb-2"><CardTitle className="text-sm">文档数</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{kb.document_count}</div></CardContent></Card>
               <Card><CardHeader className="pb-2"><CardTitle className="text-sm">分段数</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{kb.segment_count.toLocaleString()}</div></CardContent></Card>
-              <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Embedding 模型</CardTitle></CardHeader><CardContent><div className="text-sm font-medium">{kb.embedding_model}</div></CardContent></Card>
+              <Card><CardHeader className="pb-2"><CardTitle className="text-sm">模型标识（预留）</CardTitle></CardHeader><CardContent><div className="text-sm font-medium">{kb.embedding_model}</div></CardContent></Card>
               <Card><CardHeader className="pb-2"><CardTitle className="text-sm">状态</CardTitle></CardHeader><CardContent>{statusBadge(kb.status)}</CardContent></Card>
             </div>
             <Card>
@@ -265,7 +270,7 @@ export default function KnowledgeDetail() {
                   ['分段方式', kb.chunk_method === 'fixed' ? '固定长度' : kb.chunk_method === 'sentence' ? '按句子' : '按段落'],
                   ['分段大小', `${kb.chunk_size} tokens`],
                   ['重叠大小', `${kb.chunk_overlap} tokens`],
-                  ['检索策略', kb.retrieval_strategy === 'vector' ? '向量检索' : kb.retrieval_strategy === 'fulltext' ? '全文检索' : '混合检索'],
+                  ['检索策略', '全文检索'],
                   ['Top K', String(kb.top_k)],
                   ['相似度阈值', String(kb.similarity_threshold)],
                   ['创建人', kb.created_by || '-'],
@@ -286,7 +291,7 @@ export default function KnowledgeDetail() {
             <div className="grid grid-cols-2 h-full gap-0">
               <div className="overflow-y-auto px-6 pb-6 space-y-4 border-r">
                 <Card>
-                  <CardHeader className="pb-3"><CardTitle className="text-base">Embedding 模型</CardTitle></CardHeader>
+                  <CardHeader className="pb-3"><CardTitle className="text-base">检索模型标识（预留）</CardTitle></CardHeader>
                   <CardContent>
                     <div className="space-y-1.5">
                       <Label>模型</Label>
@@ -337,9 +342,7 @@ export default function KnowledgeDetail() {
                       <Select value={configForm.retrieval_strategy} onValueChange={v => setConfig('retrieval_strategy', v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="vector">向量检索</SelectItem>
                           <SelectItem value="fulltext">全文检索</SelectItem>
-                          <SelectItem value="hybrid">混合检索</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -355,10 +358,10 @@ export default function KnowledgeDetail() {
                     </div>
                   </CardContent>
                 </Card>
-                <Button onClick={handleSaveConfig} disabled={configSaving}>
+                {can(PERMISSIONS.knowledgeUpdate) && <Button onClick={handleSaveConfig} disabled={configSaving}>
                   {configSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                   保存配置
-                </Button>
+                </Button>}
               </div>
             </div>
           </TabsContent>
@@ -405,7 +408,7 @@ export default function KnowledgeDetail() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除这个文档吗？此操作不可恢复，文档的所有分段和向量数据都将被删除。</AlertDialogDescription>
+            <AlertDialogDescription>确定要删除这个文档吗？此操作不可恢复，源文件和所有分段都将被删除。</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>

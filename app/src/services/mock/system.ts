@@ -1,6 +1,8 @@
 import type { PaginatedResponse } from '../types/common';
-import type { User, Role, ApiKey, AuditLog, SystemAlert, SystemSettings } from '../types/system';
+import type { User, Role, ApiKey, AuditLog, SystemAlert, SystemSettings, AlertRule } from '../types/system';
 import { mockUsers, mockRoles, mockApiKeys, mockAuditLogs, mockSystemAlerts, mockSystemSettings, mockPermissions } from './data/system';
+
+const mockAlertRules: AlertRule[] = [];
 
 export const mockSystemService = {
   // 用户管理
@@ -60,6 +62,7 @@ export const mockSystemService = {
       role: data.role || 'viewer',
       status: 'active',
       department: data.department || '',
+      lastLoginAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
     return newUser;
@@ -71,6 +74,7 @@ export const mockSystemService = {
   },
 
   async deleteUser(id: string): Promise<void> {
+    void id
     await new Promise((resolve) => setTimeout(resolve, 500));
   },
 
@@ -121,6 +125,7 @@ export const mockSystemService = {
   },
 
   async deleteRole(id: string): Promise<void> {
+    void id
     await new Promise((resolve) => setTimeout(resolve, 500));
   },
 
@@ -158,13 +163,31 @@ export const mockSystemService = {
       permissions: data.permissions || [],
       rateLimit: data.rateLimit || 100,
       usageCount: 0,
+      lastUsedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString(),
       createdBy: 'current-user',
     };
     return newKey;
   },
 
+  async updateApiKey(id: string, data: Partial<ApiKey>): Promise<ApiKey> {
+    const item = mockApiKeys.find((key) => key.id === id);
+    if (!item) throw new Error('API Key 不存在');
+    Object.assign(item, data);
+    return { ...item };
+  },
+
+  async rotateApiKey(id: string): Promise<ApiKey> {
+    const item = mockApiKeys.find((key) => key.id === id);
+    if (!item) throw new Error('API Key 不存在');
+    item.key = `sk-mock-${Math.random().toString(36).slice(2)}`;
+    item.status = 'active';
+    return { ...item };
+  },
+
   async deleteApiKey(id: string): Promise<void> {
+    void id
     await new Promise((resolve) => setTimeout(resolve, 500));
   },
 
@@ -174,6 +197,7 @@ export const mockSystemService = {
     pageSize?: number;
     userId?: string;
     action?: string;
+    search?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<PaginatedResponse<AuditLog>> {
@@ -185,6 +209,10 @@ export const mockSystemService = {
 
     if (params?.action) {
       filtered = filtered.filter((l) => l.action.includes(params.action!));
+    }
+    if (params?.search) {
+      const keyword = params.search.toLowerCase();
+      filtered = filtered.filter((item) => item.userName.toLowerCase().includes(keyword) || item.resourceName.toLowerCase().includes(keyword));
     }
 
     const page = params?.page || 1;
@@ -218,12 +246,50 @@ export const mockSystemService = {
     return filtered;
   },
 
+  async createAlert(data: Pick<SystemAlert, 'type' | 'title' | 'message' | 'source' | 'severity'>): Promise<SystemAlert> {
+    const item: SystemAlert = { ...data, id: `alert-${Date.now()}`, status: 'active', count: 1, firstOccurredAt: new Date().toISOString(), lastOccurredAt: new Date().toISOString(), acknowledgedBy: null };
+    mockSystemAlerts.push(item);
+    return item;
+  },
+
   async acknowledgeAlert(id: string): Promise<void> {
+    const item = mockSystemAlerts.find((alert) => alert.id === id);
+    if (item) { item.status = 'acknowledged'; item.acknowledgedBy = 'admin'; item.acknowledgedAt = new Date().toISOString(); }
     await new Promise((resolve) => setTimeout(resolve, 500));
   },
 
   async resolveAlert(id: string): Promise<void> {
+    const item = mockSystemAlerts.find((alert) => alert.id === id);
+    if (item) { item.status = 'resolved'; item.resolvedAt = new Date().toISOString(); }
     await new Promise((resolve) => setTimeout(resolve, 500));
+  },
+
+  async deleteAlert(id: string): Promise<void> {
+    const index = mockSystemAlerts.findIndex((alert) => alert.id === id);
+    if (index >= 0) mockSystemAlerts.splice(index, 1);
+  },
+
+  async getAlertRules(): Promise<AlertRule[]> {
+    return [...mockAlertRules];
+  },
+
+  async createAlertRule(data: Omit<AlertRule, 'id' | 'status' | 'createdBy' | 'createdAt' | 'updatedAt'>): Promise<AlertRule> {
+    const now = new Date().toISOString();
+    const item: AlertRule = { ...data, id: `rule-${Date.now()}`, status: 'enabled', createdBy: 'admin', createdAt: now, updatedAt: now };
+    mockAlertRules.push(item);
+    return item;
+  },
+
+  async updateAlertRule(id: string, data: Partial<AlertRule>): Promise<AlertRule> {
+    const index = mockAlertRules.findIndex((rule) => rule.id === id);
+    if (index < 0) throw new Error('告警规则不存在');
+    mockAlertRules[index] = { ...mockAlertRules[index], ...data, updatedAt: new Date().toISOString() };
+    return mockAlertRules[index];
+  },
+
+  async deleteAlertRule(id: string): Promise<void> {
+    const index = mockAlertRules.findIndex((rule) => rule.id === id);
+    if (index >= 0) mockAlertRules.splice(index, 1);
   },
 
   // 系统设置
@@ -268,6 +334,7 @@ export const mockSystemService = {
   },
 
   async deletePermission(id: string): Promise<void> {
+    void id
     await new Promise(r => setTimeout(r, 300));
   },
 };

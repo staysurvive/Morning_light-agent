@@ -4,13 +4,15 @@ import { ArrowLeft, Download, User, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { conversationService } from '@/services/conversation';
 import type { Conversation, ConversationTurn, TraceStep } from '@/services/types/conversation';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function ConversationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [selectedTurn, setSelectedTurn] = useState<string | null>(null);
@@ -99,10 +101,10 @@ export default function ConversationDetail() {
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(conversation.status)}
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          {can(PERMISSIONS.conversationExport) && <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             导出
-          </Button>
+          </Button>}
         </div>
       </div>
 

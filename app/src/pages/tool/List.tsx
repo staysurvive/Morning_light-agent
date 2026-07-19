@@ -10,26 +10,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toolService } from '@/services/tool';
 import type { ToolRead } from '@/services/tool';
 import Pagination from '@/components/Pagination';
-
-const PAGE_SIZE = 5;
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function ToolList() {
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [tools, setTools] = useState<ToolRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toolToDelete, setToolToDelete] = useState<number | null>(null);
 
   useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { loadTools(); }, [page, search]);
+  useEffect(() => { loadTools(); }, [page, pageSize, search]);
 
   const loadTools = async () => {
     try {
       setLoading(true);
-      const res = await toolService.getTools({ page, page_size: PAGE_SIZE, keyword: search || undefined });
+      const res = await toolService.getTools({ page, page_size: pageSize, keyword: search || undefined });
       setTools(res.items);
       setTotal(res.total);
     } catch (error) {
@@ -90,9 +92,9 @@ export default function ToolList() {
           <h1 className="text-3xl font-bold">工具管理</h1>
           <p className="text-muted-foreground mt-1">管理Agent可用的工具和函数</p>
         </div>
-        <Button onClick={() => navigate('/tools/create')}>
+        {can(PERMISSIONS.toolCreate) && <Button onClick={() => navigate('/tools/create')}>
           <Plus className="h-4 w-4 mr-2" />创建工具
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -156,22 +158,22 @@ export default function ToolList() {
                   <TableCell>{getStatusBadge(tool.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleToggle(tool)} title={tool.status === 'enabled' ? '停用' : '启用'}>
+                      {can(PERMISSIONS.toolEnable) && <Button variant="ghost" size="sm" onClick={() => handleToggle(tool)} title={tool.status === 'enabled' ? '停用' : '启用'}>
                         {tool.status === 'enabled' ? <ToggleRight className="h-4 w-4 text-green-600" /> : <ToggleLeft className="h-4 w-4" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/tools/${tool.id}/edit`)}>
+                      </Button>}
+                      {can(PERMISSIONS.toolUpdate) && <Button variant="ghost" size="sm" onClick={() => navigate(`/tools/${tool.id}/edit`)}>
                         <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setToolToDelete(tool.id); setDeleteDialogOpen(true); }}>
+                      </Button>}
+                      {can(PERMISSIONS.toolDelete) && <Button variant="ghost" size="sm" onClick={() => { setToolToDelete(tool.id); setDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 

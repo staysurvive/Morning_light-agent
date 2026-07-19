@@ -12,19 +12,19 @@ const mockKBs: KnowledgeBaseRead[] = [
 ];
 
 const mockDocuments: DocumentRead[] = [
-  { id: 1, knowledge_base_id: 1, file_name: '产品手册v2.pdf', file_type: 'pdf', file_size: '2.4MB', minio_path: 'kb/1/产品手册v2.pdf', status: 'completed', segment_count: 45, word_count: 12000, uploaded_by: 'admin', uploaded_at: '2024-01-10T10:00:00Z', processed_at: '2024-01-10T10:05:00Z' },
-  { id: 2, knowledge_base_id: 1, file_name: '功能说明.docx', file_type: 'docx', file_size: '1.2MB', minio_path: 'kb/1/功能说明.docx', status: 'completed', segment_count: 30, word_count: 8000, uploaded_by: 'admin', uploaded_at: '2024-01-15T10:00:00Z', processed_at: '2024-01-15T10:03:00Z' },
-  { id: 3, knowledge_base_id: 1, file_name: '常见问题.txt', file_type: 'txt', file_size: '0.3MB', minio_path: 'kb/1/常见问题.txt', status: 'failed', segment_count: 0, word_count: 0, error_message: '文件解析失败', uploaded_by: 'admin', uploaded_at: '2024-01-20T10:00:00Z' },
-  { id: 4, knowledge_base_id: 2, file_name: 'API文档.md', file_type: 'md', file_size: '0.5MB', minio_path: 'kb/2/API文档.md', status: 'completed', segment_count: 60, word_count: 15000, uploaded_by: 'admin', uploaded_at: '2024-01-20T10:00:00Z', processed_at: '2024-01-20T10:02:00Z' },
+  { id: 1, knowledge_base_id: 1, file_name: '产品手册v2.pdf', file_type: 'pdf', file_size: '2.4MB', storage_path: 'kb/1/产品手册v2.pdf', status: 'completed', segment_count: 45, word_count: 12000, uploaded_by: 'admin', uploaded_at: '2024-01-10T10:00:00Z', processed_at: '2024-01-10T10:05:00Z' },
+  { id: 2, knowledge_base_id: 1, file_name: '功能说明.docx', file_type: 'docx', file_size: '1.2MB', storage_path: 'kb/1/功能说明.docx', status: 'completed', segment_count: 30, word_count: 8000, uploaded_by: 'admin', uploaded_at: '2024-01-15T10:00:00Z', processed_at: '2024-01-15T10:03:00Z' },
+  { id: 3, knowledge_base_id: 1, file_name: '常见问题.txt', file_type: 'txt', file_size: '0.3MB', storage_path: 'kb/1/常见问题.txt', status: 'failed', segment_count: 0, word_count: 0, error_message: '文件解析失败', uploaded_by: 'admin', uploaded_at: '2024-01-20T10:00:00Z' },
+  { id: 4, knowledge_base_id: 2, file_name: 'API文档.md', file_type: 'md', file_size: '0.5MB', storage_path: 'kb/2/API文档.md', status: 'completed', segment_count: 60, word_count: 15000, uploaded_by: 'admin', uploaded_at: '2024-01-20T10:00:00Z', processed_at: '2024-01-20T10:02:00Z' },
 ];
 
 const mockSegments: SegmentRead[] = [
-  { id: 1, knowledge_base_id: 1, document_id: 1, content: '产品概述：本产品是一款智能AI助手平台，支持多种大语言模型接入，提供知识库管理、对话管理等核心功能。', word_count: 200, token_count: 300, position: 1, hit_count: 15, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
-  { id: 2, knowledge_base_id: 1, document_id: 1, content: '主要功能：支持多轮对话、知识检索、文档管理、模型管理等功能，可灵活配置各类AI能力。', word_count: 180, token_count: 270, position: 2, hit_count: 8, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
-  { id: 3, knowledge_base_id: 1, document_id: 1, content: '系统架构：采用前后端分离架构，前端使用React+TypeScript，后端使用FastAPI+PostgreSQL。', word_count: 160, token_count: 240, position: 3, hit_count: 5, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
-  { id: 4, knowledge_base_id: 1, document_id: 2, content: '功能说明第一节：用户管理模块支持RBAC权限控制，可以灵活配置角色和权限。', word_count: 150, token_count: 220, position: 1, hit_count: 3, created_at: '2024-01-15T10:00:00Z', updated_at: '2024-01-15T10:00:00Z' },
-  { id: 5, knowledge_base_id: 1, document_id: 2, content: '功能说明第二节：模型管理支持多供应商接入，包括OpenAI、Anthropic、阿里云等主流供应商。', word_count: 170, token_count: 255, position: 2, hit_count: 12, created_at: '2024-01-15T10:00:00Z', updated_at: '2024-01-15T10:00:00Z' },
-  { id: 6, knowledge_base_id: 2, document_id: 4, content: 'API接口规范：所有接口遵循RESTful设计规范，返回格式统一为{code, message, data}。', word_count: 140, token_count: 210, position: 1, hit_count: 20, created_at: '2024-01-20T10:00:00Z', updated_at: '2024-01-20T10:00:00Z' },
+  { id: 1, knowledge_base_id: 1, document_id: 1, document_name: '产品手册v2.pdf', content: '产品概述：本产品是一款智能AI助手平台，支持多种大语言模型接入，提供知识库管理、对话管理等核心功能。', word_count: 200, token_count: 300, position: 1, keywords: ['产品', '知识库'], hit_count: 15, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
+  { id: 2, knowledge_base_id: 1, document_id: 1, document_name: '产品手册v2.pdf', content: '主要功能：支持多轮对话、知识检索、文档管理、模型管理等功能，可灵活配置各类AI能力。', word_count: 180, token_count: 270, position: 2, keywords: ['功能', '模型'], hit_count: 8, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
+  { id: 3, knowledge_base_id: 1, document_id: 1, document_name: '产品手册v2.pdf', content: '系统架构：采用前后端分离架构，前端使用React+TypeScript，后端使用FastAPI+MySQL。', word_count: 160, token_count: 240, position: 3, keywords: ['系统', '架构'], hit_count: 5, created_at: '2024-01-10T10:00:00Z', updated_at: '2024-01-10T10:00:00Z' },
+  { id: 4, knowledge_base_id: 1, document_id: 2, document_name: '功能说明.docx', content: '功能说明第一节：用户管理模块支持RBAC权限控制，可以灵活配置角色和权限。', word_count: 150, token_count: 220, position: 1, keywords: ['权限', '角色'], hit_count: 3, created_at: '2024-01-15T10:00:00Z', updated_at: '2024-01-15T10:00:00Z' },
+  { id: 5, knowledge_base_id: 1, document_id: 2, document_name: '功能说明.docx', content: '功能说明第二节：模型管理支持多供应商接入，包括OpenAI、Anthropic、阿里云等主流供应商。', word_count: 170, token_count: 255, position: 2, keywords: ['模型', '供应商'], hit_count: 12, created_at: '2024-01-15T10:00:00Z', updated_at: '2024-01-15T10:00:00Z' },
+  { id: 6, knowledge_base_id: 2, document_id: 4, document_name: 'API文档.md', content: 'API接口规范：所有接口遵循RESTful设计规范，返回格式统一为{code, message, data}。', word_count: 140, token_count: 210, position: 1, keywords: ['api', '接口'], hit_count: 20, created_at: '2024-01-20T10:00:00Z', updated_at: '2024-01-20T10:00:00Z' },
 ];
 
 export const mockKnowledgeService = {
@@ -47,7 +47,7 @@ export const mockKnowledgeService = {
     return { ...kb };
   },
 
-  async createKnowledgeBase(data: any): Promise<KnowledgeBaseRead> {
+  async createKnowledgeBase(data: Pick<KnowledgeBaseRead, 'name'> & Partial<KnowledgeBaseRead>): Promise<KnowledgeBaseRead> {
     await delay(400);
     const newKb: KnowledgeBaseRead = {
       id: mockKBs.length + 1,
@@ -71,7 +71,7 @@ export const mockKnowledgeService = {
     return newKb;
   },
 
-  async updateKnowledgeBase(id: number, data: any): Promise<KnowledgeBaseRead> {
+  async updateKnowledgeBase(id: number, data: Partial<KnowledgeBaseRead>): Promise<KnowledgeBaseRead> {
     await delay(300);
     const idx = mockKBs.findIndex(k => k.id === id);
     if (idx === -1) throw new Error('知识库不存在');
@@ -113,7 +113,7 @@ export const mockKnowledgeService = {
       file_name: file.name,
       file_type: file.name.split('.').pop() || 'unknown',
       file_size: `${(file.size / 1024 / 1024).toFixed(1)}MB`,
-      minio_path: `kb/${kbId}/${file.name}`,
+      storage_path: `kb/${kbId}/${file.name}`,
       status: 'processing',
       segment_count: 0,
       word_count: 0,
@@ -160,7 +160,7 @@ export const mockKnowledgeService = {
     return { items: filtered.slice(start, start + page_size), total: filtered.length, page, page_size };
   },
 
-  async updateSegment(kbId: number, segId: number, data: any): Promise<SegmentRead> {
+  async updateSegment(kbId: number, segId: number, data: Partial<SegmentRead>): Promise<SegmentRead> {
     await delay(300);
     const idx = mockSegments.findIndex(s => s.id === segId && s.knowledge_base_id === kbId);
     if (idx === -1) throw new Error('分段不存在');

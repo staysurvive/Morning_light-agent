@@ -35,11 +35,13 @@ class BaseRepository(Generic[T]):
     async def delete(self, obj: T) -> None:
         await self.db.delete(obj)
         await self.db.flush()
-    async def delete_by_id(self, id: int) -> None:
-        stmt = select(self.model).where(id == self.model.id)
-        await self.db.execute(stmt)
 
-
+    async def delete_by_id(self, id: int) -> bool:
+        obj = await self.get_by_id(id)
+        if obj is None:
+            return False
+        await self.delete(obj)
+        return True
 
     async def get_page(
             self,

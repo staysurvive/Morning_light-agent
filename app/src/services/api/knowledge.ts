@@ -13,7 +13,7 @@ export interface KnowledgeBaseRead {
   chunk_overlap: number;
   chunk_method: string; // 'fixed' | 'sentence' | 'paragraph'
   // 检索策略
-  retrieval_strategy: string; // 'vector' | 'fulltext' | 'hybrid'
+  retrieval_strategy: string;
   top_k: number;
   similarity_threshold: number;
   created_by: string | null;
@@ -27,7 +27,7 @@ export interface DocumentRead {
   file_name: string;
   file_type: string;
   file_size: string | null;
-  minio_path: string | null;
+  storage_path: string;
   status: string;
   segment_count: number;
   word_count: number;
@@ -41,10 +41,12 @@ export interface SegmentRead {
   id: number;
   knowledge_base_id: number;
   document_id: number;
+  document_name: string;
   content: string;
   word_count: number;
   token_count: number;
   position: number;
+  keywords: string[];
   hit_count: number;
   created_at: string;
   updated_at: string;

@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
 import jwt
 
-SECRET_KEY = "17bfb8d274f91b4bf09f55d0c2d086319c251859c7a0edf1aef823e4c3c5adea"
+from src.core.config import get_settings
+
+SECRET_KEY = get_settings().APP_SECRET_KEY
 ALGORITHM = "HS256"
 
 # 配置OAuth2 Bearer 模式

@@ -7,5 +7,5 @@ def test_add():
     print("哈哈哈")
     assert add(2, 3) == 5
 
-def test_add_fail():
-    assert add(2, 2) == 5  # 故意写错的断言，用来演示失败的测试
+def test_add_same_values():
+    assert add(2, 2) == 4

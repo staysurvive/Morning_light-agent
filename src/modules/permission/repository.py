@@ -1,5 +1,3 @@
-from sqlalchemy.engine import result
-
 from src.core.base_repository import BaseRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -23,9 +21,8 @@ class PermissionRepository(BaseRepository[Permission]):
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def get_by_id(self,ids:list[int]) -> list[Permission]:
-        result =  await self.db.scalar(select(Permission).where(Permission.id.in_(ids)))
-        return result.all()
+    async def get_by_id(self, id: int) -> Permission | None:
+        return await super().get_by_id(id)
     # 分页搜索
     async def search_page(self, offset: int, limit: int, keyword: str | None) -> tuple[list[Permission], int]:
         return await  self.get_page(offset,limit,keyword,self.SEARCH_FIELDS)

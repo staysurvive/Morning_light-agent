@@ -11,15 +11,10 @@ export interface ApiErrorResponse {
 }
 
 export interface PaginatedResponse<T> {
-  code: 0
-  message: 'success'
-  data: {
-    items: T[]
-    total: number
-    page: number
-    pageSize: number
-    totalPages: number
-  }
+  data: T[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface PaginationParams {

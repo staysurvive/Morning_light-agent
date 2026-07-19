@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { agentService } from '@/services/agent';
 import type { AgentRead } from '@/services/agent';
+import { modelService, type ModelRead } from '@/services/model';
 
 export default function AgentCreate() {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +19,7 @@ export default function AgentCreate() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'conversational',
+    type: 'conversation',
     model_id: undefined as number | undefined,
     config: {
       temperature: 0.7,
@@ -26,7 +27,7 @@ export default function AgentCreate() {
       top_p: 1.0,
       system_prompt: '',
       rag_enabled: false,
-      retrieval_strategy: 'hybrid',
+      retrieval_strategy: 'fulltext',
       top_k: 5,
       similarity_threshold: 0.7,
       tools_enabled: false,
@@ -35,8 +36,14 @@ export default function AgentCreate() {
       timeout: 30,
     },
   });
+  const [models, setModels] = useState<ModelRead[]>([]);
 
   useEffect(() => { if (id) loadAgent(); }, [id]);
+  useEffect(() => {
+    modelService.getModels({ page: 1, page_size: 100 })
+      .then((result) => setModels(result.items))
+      .catch((error: unknown) => console.error('加载模型失败:', error));
+  }, []);
 
   const loadAgent = async () => {
     try {
@@ -52,7 +59,7 @@ export default function AgentCreate() {
           top_p: agent.config?.top_p ?? 1.0,
           system_prompt: agent.config?.system_prompt ?? '',
           rag_enabled: agent.config?.rag_enabled ?? false,
-          retrieval_strategy: agent.config?.retrieval_strategy ?? 'hybrid',
+          retrieval_strategy: agent.config?.retrieval_strategy ?? 'fulltext',
           top_k: agent.config?.top_k ?? 5,
           similarity_threshold: agent.config?.similarity_threshold ?? 0.7,
           tools_enabled: agent.config?.tools_enabled ?? false,
@@ -99,7 +106,7 @@ export default function AgentCreate() {
         </div>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => navigate('/agents')}>取消</Button>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading || !formData.model_id}>
             {loading ? '保存中...' : id ? '保存修改' : '创建 Agent'}
           </Button>
         </div>
@@ -135,9 +142,9 @@ export default function AgentCreate() {
                 <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="conversational">对话型</SelectItem>
+                    <SelectItem value="conversation">对话型</SelectItem>
                     <SelectItem value="tool">工具型</SelectItem>
-                    <SelectItem value="analytical">分析型</SelectItem>
+                    <SelectItem value="analysis">分析型</SelectItem>
                     <SelectItem value="creative">创作型</SelectItem>
                     <SelectItem value="workflow">工作流</SelectItem>
                   </SelectContent>
@@ -149,6 +156,13 @@ export default function AgentCreate() {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base">高级配置</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>模型 *</Label>
+                <Select value={formData.model_id ? String(formData.model_id) : ''} onValueChange={(value) => setFormData({ ...formData, model_id: Number(value) })}>
+                  <SelectTrigger><SelectValue placeholder="选择已登记模型" /></SelectTrigger>
+                  <SelectContent>{models.map((model) => <SelectItem key={model.id} value={String(model.id)}>{model.name} · {model.provider_name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label>开场白</Label>
                 <Textarea
@@ -226,9 +240,7 @@ export default function AgentCreate() {
                       onValueChange={(v) => setConfig({ retrieval_strategy: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="vector">向量检索</SelectItem>
                         <SelectItem value="fulltext">全文检索</SelectItem>
-                        <SelectItem value="hybrid">混合检索</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

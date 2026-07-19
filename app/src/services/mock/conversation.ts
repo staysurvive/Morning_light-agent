@@ -1,4 +1,5 @@
-import type { Conversation, ConversationTurn, TraceStep, PaginatedResponse } from '../types/common';
+import type { PaginatedResponse } from '../types/common';
+import type { Conversation, ConversationTurn, TraceStep } from '../types/conversation';
 import { mockConversations, mockConversationTurns, mockTraceSteps } from './data/conversations';
 
 export const mockConversationService = {
@@ -82,7 +83,7 @@ export const mockConversationService = {
       text += `用户: ${conversation.userName}\n`;
       text += `开始时间: ${conversation.startedAt}\n\n`;
       
-      turns.forEach((turn, index) => {
+      turns.forEach((turn) => {
         text += `[${turn.role === 'user' ? '用户' : 'AI'}]: ${turn.content}\n\n`;
       });
       

@@ -55,7 +55,7 @@ export const apiModelService = {
     return apiClient.delete(`/providers/${id}`);
   },
 
-  async testProviderConnection(id: number): Promise<Record<string, any>> {
+  async testProviderConnection(id: number): Promise<Record<string, unknown>> {
     return apiClient.post(`/providers/${id}/test`);
   },
 

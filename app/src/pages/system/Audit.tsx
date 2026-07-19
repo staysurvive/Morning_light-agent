@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Download, Filter } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { systemService } from '@/services/system';
 import type { AuditLog } from '@/services/types/system';
+import Pagination from '@/components/Pagination';
 
 export default function SystemAudit() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -28,39 +29,30 @@ export default function SystemAudit() {
   const [search, setSearch] = useState('');
   const [action, setAction] = useState('all');
   const [module, setModule] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    loadLogs();
-  }, [search, action, module]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = { pageSize: 50 };
+      const params: { page: number; pageSize: number; action?: string; module?: string; search?: string } = { page, pageSize };
       if (action !== 'all') params.action = action;
+      if (module !== 'all') params.module = module;
+      if (search.trim()) params.search = search.trim();
       
       const response = await systemService.getAuditLogs(params);
-      let filtered = response.data;
-      
-      if (search) {
-        filtered = filtered.filter(
-          (log) =>
-            log.userName.toLowerCase().includes(search.toLowerCase()) ||
-            log.detail.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-      
-      if (module !== 'all') {
-        filtered = filtered.filter((log) => log.module === module);
-      }
-      
-      setLogs(filtered);
+      setLogs(response.data);
+      setTotal(response.total);
     } catch (error) {
       console.error('加载审计日志失败:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [action, module, page, pageSize, search]);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
+  useEffect(() => { setPage(1); }, [search, action, module]);
 
   const getActionBadge = (action: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -127,7 +119,7 @@ export default function SystemAudit() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">审计日志</h1>
-          <p className="text-muted-foreground mt-1">查看系统操作记录</p>
+          <p className="text-muted-foreground mt-1">查看系统操作记录（导出当前筛选页）</p>
         </div>
         <Button onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
@@ -255,10 +247,10 @@ export default function SystemAudit() {
                     </TableCell>
                     <TableCell className="font-medium">{log.userName}</TableCell>
                     <TableCell>{getActionBadge(log.action)}</TableCell>
-                    <TableCell>{getModuleBadge(log.module)}</TableCell>
+                    <TableCell>{getModuleBadge(log.module ?? log.action.split('.')[0])}</TableCell>
                     <TableCell className="text-sm">{log.resourceName || '-'}</TableCell>
-                    <TableCell className="text-sm max-w-xs truncate">{log.detail}</TableCell>
-                    <TableCell className="text-sm font-mono">{log.ipAddress}</TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">{log.detail ?? JSON.stringify(log.details)}</TableCell>
+                    <TableCell className="text-sm font-mono">{log.ipAddress ?? log.ip}</TableCell>
                     <TableCell>
                       <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
                         {log.status === 'success' ? '成功' : '失败'}
@@ -269,6 +261,7 @@ export default function SystemAudit() {
               )}
             </TableBody>
           </Table>
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 

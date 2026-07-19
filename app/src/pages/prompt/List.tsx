@@ -10,26 +10,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { promptService } from '@/services/prompt';
 import type { PromptRead } from '@/services/prompt';
 import Pagination from '@/components/Pagination';
-
-const PAGE_SIZE = 5;
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function PromptList() {
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [prompts, setPrompts] = useState<PromptRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<number | null>(null);
 
   useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { loadPrompts(); }, [page, search]);
+  useEffect(() => { loadPrompts(); }, [page, pageSize, search]);
 
   const loadPrompts = async () => {
     try {
       setLoading(true);
-      const res = await promptService.getPrompts({ page, page_size: PAGE_SIZE, keyword: search || undefined });
+      const res = await promptService.getPrompts({ page, page_size: pageSize, keyword: search || undefined });
       setPrompts(res.items);
       setTotal(res.total);
     } catch (error) {
@@ -81,9 +83,9 @@ export default function PromptList() {
           <h1 className="text-3xl font-bold">Prompt管理</h1>
           <p className="text-muted-foreground mt-1">管理和优化提示词模板</p>
         </div>
-        <Button onClick={() => navigate('/prompts/create')}>
+        {can(PERMISSIONS.promptCreate) && <Button onClick={() => navigate('/prompts/create')}>
           <Plus className="h-4 w-4 mr-2" />创建Prompt
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -149,27 +151,27 @@ export default function PromptList() {
                   <TableCell>{getStatusBadge(prompt.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {prompt.status === 'draft' && (
+                      {prompt.status === 'draft' && can(PERMISSIONS.promptPublish) && (
                         <Button variant="ghost" size="sm" onClick={() => handlePublish(prompt.id)}>
                           <BookOpen className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/prompts/${prompt.id}/edit`)}>
+                      {can(PERMISSIONS.promptUpdate) && <Button variant="ghost" size="sm" onClick={() => navigate(`/prompts/${prompt.id}/edit`)}>
                         <Edit className="h-4 w-4" />
-                      </Button>
+                      </Button>}
                       <Button variant="ghost" size="sm" onClick={() => navigate(`/prompts/${prompt.id}/versions`)}>
                         版本
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setPromptToDelete(prompt.id); setDeleteDialogOpen(true); }}>
+                      {can(PERMISSIONS.promptDelete) && <Button variant="ghost" size="sm" onClick={() => { setPromptToDelete(prompt.id); setDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 

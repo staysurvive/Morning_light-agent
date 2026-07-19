@@ -3,14 +3,17 @@ export interface Conversation {
   agentId: string
   agentName: string
   userId: string
-  status: 'active' | 'completed' | 'error'
+  userName: string
+  status: 'active' | 'completed' | 'failed'
   turnCount: number
-  totalTokens: number
-  totalCost: number
-  totalDuration: number
-  satisfaction?: 'positive' | 'negative' | null
+  tokenUsage: number
+  cost: number
+  duration: number
+  satisfaction?: number
   startedAt: string
   endedAt?: string
+  tags?: string[]
+  errorMessage?: string
 }
 
 export interface ConversationDetail extends Conversation {
@@ -20,9 +23,19 @@ export interface ConversationDetail extends Conversation {
 
 export interface ConversationTurn {
   id: string
+  conversationId: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+  tokenCount: number
+  toolCalls?: Array<{
+    toolId: string
+    toolName: string
+    input: Record<string, unknown>
+    output: Record<string, unknown>
+    duration: number
+    status: 'success' | 'failed'
+  }>
   trace?: TurnTrace
 }
 
@@ -35,10 +48,23 @@ export interface TurnTrace {
 }
 
 export interface TraceStep {
-  type: 'receive' | 'retrieval' | 'tool_call' | 'prompt_build' | 'llm_call' | 'response'
+  id: string
+  turnId: string
+  type: 'llm' | 'retrieval' | 'tool'
   name: string
+  input: unknown
+  output: unknown
+  startTime: string
+  endTime: string
   duration: number
-  detail: Record<string, unknown>
+  status: 'success' | 'failed'
+  tokenUsage?: { prompt: number; completion: number; total: number }
+  metadata?: {
+    knowledgeBaseId?: string
+    topK?: number
+    toolId?: string
+    toolName?: string
+  }
 }
 
 export interface ConversationAnnotation {

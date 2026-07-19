@@ -95,13 +95,13 @@ export default function AnalyticsEvaluation() {
             <CardTitle className="text-sm font-medium">平均评分</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.overview.avgRating?.toFixed(1) || 4.3}/5</div>
+            <div className="text-2xl font-bold">{(stats.overview.avgRating ?? 0).toFixed(1)}/5</div>
             <div className="flex gap-1 mt-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <span
                   key={star}
                   className={`text-lg ${
-                    star <= Math.round(stats.overview.avgRating || 4.3)
+                    star <= Math.round(stats.overview.avgRating ?? 0)
                       ? 'text-yellow-500'
                       : 'text-gray-300'
                   }`}
@@ -117,7 +117,7 @@ export default function AnalyticsEvaluation() {
             <CardTitle className="text-sm font-medium">需优化</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.overview.needsOptimization || 23}</div>
+            <div className="text-2xl font-bold">{stats.overview.needsOptimization ?? 0}</div>
             <div className="flex items-center gap-2 mt-2">
               <ThumbsDown className="h-4 w-4 text-red-500" />
               <span className="text-sm text-muted-foreground">
@@ -136,7 +136,7 @@ export default function AnalyticsEvaluation() {
           <div className="space-y-3">
             {[5, 4, 3, 2, 1].map((score) => {
               const count = stats.distribution[`score${score}` as keyof typeof stats.distribution];
-              const percentage = (count / stats.overview.totalEvaluations) * 100;
+              const percentage = stats.overview.totalEvaluations ? (count / stats.overview.totalEvaluations) * 100 : 0;
               return (
                 <div key={score} className="flex items-center gap-4">
                   <div className="flex items-center gap-1 w-16">

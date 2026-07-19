@@ -7,7 +7,7 @@ import type { DashboardStats, TrendData, AgentRanking, Alert, ResourceUsage } fr
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [trends, setTrends] = useState<TrendData[]>([])
+  const [, setTrends] = useState<TrendData[]>([])
   const [topAgents, setTopAgents] = useState<AgentRanking[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [resources, setResources] = useState<ResourceUsage[]>([])
@@ -64,7 +64,7 @@ export default function Dashboard() {
     }
   }
 
-  if (loading) {
+  if (loading || !stats) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-muted-foreground">加载中...</div>
@@ -87,10 +87,10 @@ export default function Dashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.todayCalls.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.todayCalls.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              {getTrendIcon(stats?.todayCallsTrend || 0)}
-              <span className="ml-1">较昨日 {stats?.todayCallsTrend > 0 ? '+' : ''}{stats?.todayCallsTrend}%</span>
+              {getTrendIcon(stats.todayCallsTrend || 0)}
+              <span className="ml-1">较昨日 {stats.todayCallsTrend > 0 ? '+' : ''}{stats.todayCallsTrend}%</span>
             </p>
           </CardContent>
         </Card>
@@ -101,10 +101,10 @@ export default function Dashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats?.tokenUsage || 0)}</div>
+            <div className="text-2xl font-bold">{formatNumber(stats.tokenUsage || 0)}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              {getTrendIcon(stats?.tokenUsageTrend || 0)}
-              <span className="ml-1">较昨日 {stats?.tokenUsageTrend > 0 ? '+' : ''}{stats?.tokenUsageTrend}%</span>
+              {getTrendIcon(stats.tokenUsageTrend || 0)}
+              <span className="ml-1">较昨日 {stats.tokenUsageTrend > 0 ? '+' : ''}{stats.tokenUsageTrend}%</span>
             </p>
           </CardContent>
         </Card>
@@ -115,10 +115,10 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¥{stats?.cost.toLocaleString()}</div>
+            <div className="text-2xl font-bold">¥{stats.cost.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              {getTrendIcon(stats?.costTrend || 0)}
-              <span className="ml-1">较昨日 {stats?.costTrend > 0 ? '+' : ''}{stats?.costTrend}%</span>
+              {getTrendIcon(stats.costTrend || 0)}
+              <span className="ml-1">较昨日 {stats.costTrend > 0 ? '+' : ''}{stats.costTrend}%</span>
             </p>
           </CardContent>
         </Card>
@@ -129,10 +129,10 @@ export default function Dashboard() {
             <Bot className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeAgents}/{stats?.totalAgents}</div>
+            <div className="text-2xl font-bold">{stats.activeAgents}/{stats.totalAgents}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              {getTrendIcon(stats?.activeAgentsTrend || 0)}
-              <span className="ml-1">较昨日 {stats?.activeAgentsTrend}</span>
+              {getTrendIcon(stats.activeAgentsTrend || 0)}
+              <span className="ml-1">较昨日 {stats.activeAgentsTrend}</span>
             </p>
           </CardContent>
         </Card>

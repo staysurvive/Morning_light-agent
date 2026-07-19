@@ -27,7 +27,7 @@ export default function ModelCreate() {
     context_length: 4096,
     input_price: 0,
     output_price: 0,
-    currency: 'K tokens',
+    currency: 'USD',
     is_default: false,
     description: '',
   });
@@ -232,16 +232,16 @@ export default function ModelCreate() {
             <CardHeader className="pb-3"><CardTitle className="text-base">定价信息</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <Label>计价单位</Label>
+                <Label>币种</Label>
                 <Select
                   value={formData.currency}
                   onValueChange={(v) => setFormData({ ...formData, currency: v })}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="K tokens">K tokens</SelectItem>
-                    <SelectItem value="M tokens">M tokens</SelectItem>
-                    <SelectItem value="1K tokens">1K tokens</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="CNY">CNY</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -265,9 +265,6 @@ export default function ModelCreate() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                价格单位：$ / {formData.currency}
-              </p>
             </CardContent>
           </Card>
         </div>

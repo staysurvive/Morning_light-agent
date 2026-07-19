@@ -10,26 +10,28 @@ import { Plus, Search, Play, Pause, Settings, Trash2, Bot, Activity } from 'luci
 import { agentService } from '@/services/agent'
 import type { AgentRead } from '@/services/agent'
 import Pagination from '@/components/Pagination'
-
-const PAGE_SIZE = 5
+import { useAuthorization } from '@/hooks/useAuthorization'
+import { PERMISSIONS } from '@/services/permissions'
 
 export default function AgentList() {
   const navigate = useNavigate()
+  const { can } = useAuthorization()
   const [agents, setAgents] = useState<AgentRead[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [agentToDelete, setAgentToDelete] = useState<number | null>(null)
 
   useEffect(() => { setPage(1) }, [searchQuery])
-  useEffect(() => { loadAgents() }, [page, searchQuery])
+  useEffect(() => { loadAgents() }, [page, pageSize, searchQuery])
 
   const loadAgents = async () => {
     try {
       setLoading(true)
-      const res = await agentService.getAgents({ page, page_size: PAGE_SIZE, keyword: searchQuery || undefined })
+      const res = await agentService.getAgents({ page, page_size: pageSize, keyword: searchQuery || undefined })
       setAgents(res.items)
       setTotal(res.total)
     } catch (error) {
@@ -90,9 +92,9 @@ export default function AgentList() {
           <h2 className="text-3xl font-bold tracking-tight">Agent管理</h2>
           <p className="text-muted-foreground">创建和管理智能Agent</p>
         </div>
-        <Button onClick={() => navigate('/agents/create')}>
+        {can(PERMISSIONS.agentCreate) && <Button onClick={() => navigate('/agents/create')}>
           <Plus className="mr-2 h-4 w-4" />新建Agent
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -161,22 +163,22 @@ export default function AgentList() {
                   <TableCell>{agent.version}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(agent)}>
+                      {agent.status !== 'draft' && can(PERMISSIONS.agentStartStop) && <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(agent)}>
                         {agent.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
+                      </Button>}
+                      {can(PERMISSIONS.agentUpdate) && <Button variant="ghost" size="icon" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
                         <Settings className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setAgentToDelete(agent.id); setDeleteDialogOpen(true) }}>
+                      </Button>}
+                      {can(PERMISSIONS.agentDelete) && <Button variant="ghost" size="icon" onClick={() => { setAgentToDelete(agent.id); setDeleteDialogOpen(true) }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1) }} />
         </CardContent>
       </Card>
 

@@ -1,8 +1,3 @@
-from math import perm
-
-from pydantic_settings.sources.providers import aws
-
-from src.core.exceptions import ERROR_PERM_NOT_FOUND, ERROR_PERM_NOT_FOUND_MSG
 from src.core.exceptions import BizException
 from src.infra.database import AsyncSession
 from src.modules.permission.model import Permission
@@ -28,7 +23,7 @@ class PermissionService:
     async def get_permission(self, permission_id: int) -> Permission:
         perm = await self.repo.get_by_id(permission_id)
         if  not perm:
-            raise BizException(code=ERROR_PERM_NOT_FOUND, message=ERROR_PERM_NOT_FOUND_MSG)
+            raise BizException(code=404, message="权限不存在")
         return perm
 
     async def list_permissions(self) -> list[Permission]:
@@ -47,7 +42,8 @@ class PermissionService:
         return await self.repo.update(perm)
 
     async def delete_permission(self, permission_id: int) -> None:
-        self.repo.delete_by_id(permission_id)
+        if not await self.repo.delete_by_id(permission_id):
+            raise BizException(code=404, message="权限不存在")
 
     async def search_page(self, offset: int, limit: int,keyword: str| None) -> tuple[list[Permission], int]:
         return await self.repo.search_page(offset, limit, keyword)

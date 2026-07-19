@@ -18,7 +18,7 @@ export default function KnowledgeCreate() {
     chunk_method: 'fixed',
     chunk_size: 500,
     chunk_overlap: 50,
-    retrieval_strategy: 'hybrid',
+    retrieval_strategy: 'fulltext',
     top_k: 5,
     similarity_threshold: 0.7,
   });
@@ -44,7 +44,7 @@ export default function KnowledgeCreate() {
       <div className="flex items-center justify-between px-6 py-4 border-b bg-white shrink-0">
         <div>
           <h1 className="text-xl font-bold">创建知识库</h1>
-          <p className="text-xs text-muted-foreground">配置知识库基本信息和索引策略</p>
+          <p className="text-xs text-muted-foreground">配置知识库基本信息、分段与检索参数</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/knowledge')}>取消</Button>
@@ -55,7 +55,7 @@ export default function KnowledgeCreate() {
       </div>
 
       <form id="kb-form" onSubmit={handleSubmit} className="flex-1 overflow-hidden grid grid-cols-2 gap-0">
-        {/* 左栏：基本信息 + Embedding */}
+        {/* 左栏：基本信息 + 预留模型标识 */}
         <div className="overflow-y-auto p-6 space-y-4 border-r">
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-base">基本信息</CardTitle></CardHeader>
@@ -72,7 +72,7 @@ export default function KnowledgeCreate() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">Embedding 模型</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base">检索模型标识（预留）</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-1.5">
                 <Label>模型</Label>
@@ -126,9 +126,7 @@ export default function KnowledgeCreate() {
                 <Select value={formData.retrieval_strategy} onValueChange={v => set('retrieval_strategy', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vector">向量检索</SelectItem>
                     <SelectItem value="fulltext">全文检索</SelectItem>
-                    <SelectItem value="hybrid">混合检索</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

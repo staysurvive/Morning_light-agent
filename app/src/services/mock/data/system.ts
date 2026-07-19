@@ -303,55 +303,15 @@ export const mockSystemAlerts: SystemAlert[] = [
 
 // 系统设置Mock数据
 export const mockSystemSettings: SystemSettings = {
-  basic: {
-    siteName: '辰光Agent平台',
-    siteUrl: 'https://agent.example.com',
-    logo: '/logo.png',
-    favicon: '/favicon.ico',
-    timezone: 'Asia/Shanghai',
-    language: 'zh-CN',
-  },
-  security: {
-    passwordMinLength: 8,
-    passwordRequireUppercase: true,
-    passwordRequireNumber: true,
-    passwordRequireSpecial: true,
-    sessionTimeout: 7200,
-    maxLoginAttempts: 5,
-    lockoutDuration: 1800,
-    enableTwoFactor: false,
-  },
-  notification: {
-    enableEmail: true,
-    emailProvider: 'smtp',
-    smtpHost: 'smtp.example.com',
-    smtpPort: 587,
-    smtpUser: 'noreply@example.com',
-    smtpFrom: 'noreply@example.com',
-    enableWebhook: true,
-    webhookUrl: 'https://webhook.example.com/notify',
-  },
-  storage: {
-    provider: 'aliyun-oss',
-    region: 'cn-hangzhou',
-    bucket: 'agent-platform',
-    maxFileSize: 104857600,
-    allowedFileTypes: ['.pdf', '.docx', '.txt', '.md'],
-  },
-  model: {
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-3.5-turbo',
-    maxTokens: 4096,
-    temperature: 0.7,
-    timeout: 30000,
-  },
-  rateLimit: {
-    enableRateLimit: true,
-    defaultLimit: 100,
-    windowSize: 60,
-    enableIpWhitelist: false,
-    ipWhitelist: [],
-  },
+  systemName: '辰光 Agent',
+  systemDescription: '企业内部 AI Agent 管理平台',
+  defaultLanguage: 'zh-CN',
+  defaultModel: 'gpt-3.5-turbo',
+  defaultTemperature: 0.7,
+  defaultMaxTokens: 4096,
+  smtpServer: 'smtp.example.com',
+  smtpPort: 587,
+  senderEmail: 'noreply@example.com',
 };
 
 // 权限Mock数据

@@ -1,14 +1,19 @@
-from src.core.deps import PageParams
-from src.modules.role.schema import RoleAssignPermissions
-from src.modules.permission.schema import PermissionRead
-from src.core.base_schema import ResponseSchema, PageResult
-from src.modules.role.schema import RoleRead
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.role.schema import RoleCreate, RoleUpdate, RoleAssignPermissions
 
-from src.modules.role.service import RoleService
+from src.core.base_schema import PageResult, ResponseSchema
+from src.core.deps import PageParams, require_permission
+from src.core.permissions import (
+    ROLE_ASSIGN_PERMISSIONS,
+    ROLE_CREATE,
+    ROLE_DELETE,
+    ROLE_READ,
+    ROLE_UPDATE,
+)
 from src.infra.database import get_db
+from src.modules.permission.schema import PermissionRead
+from src.modules.role.schema import RoleAssignPermissions, RoleCreate, RoleRead, RoleUpdate
+from src.modules.role.service import RoleService
 
 router = APIRouter(prefix="/roles", tags=["Role"])
 
@@ -17,11 +22,12 @@ router = APIRouter(prefix="/roles", tags=["Role"])
 ## 2.参数位置注入：使用Depens注入Servvice依赖
 ## 3.api调用Service，甩锅式敲代码
 
-def get_role_service(db: AsyncSession = Depends(get_db)) -> RoleService:
+def get_role_service(db: AsyncSession = Depends(get_db, scope="function")) -> RoleService:
     return RoleService(db)
 
 # GET /api/v1/permissions/search 分页获取权限
-@router.get("/search", response_model=ResponseSchema[PageResult[RoleRead]], summary="分页搜索角色")
+@router.get("/search", response_model=ResponseSchema[PageResult[RoleRead]], summary="分页搜索角色",
+            dependencies=[Depends(require_permission(ROLE_READ))])
 async def list_search_results(svc: RoleService = Depends(get_role_service),
                               params: PageParams = Depends()):
     """分页搜索权限"""
@@ -39,13 +45,15 @@ async def list_search_results(svc: RoleService = Depends(get_role_service),
 
 
 # POST  /api/v1/roles   创建角色
-@router.post("", response_model=ResponseSchema[RoleRead])
+@router.post("", response_model=ResponseSchema[RoleRead],
+             dependencies=[Depends(require_permission(ROLE_CREATE))])
 async def create_role(role: RoleCreate, service: RoleService = Depends(get_role_service)):
     data = await service.create_role(role)
     return ResponseSchema[RoleRead](data=RoleRead.model_validate(data))
 
 # GET   /api/v1/roles/{role_id} 角色详情（含权限列表）
-@router.get("/{role_id}", response_model=ResponseSchema[RoleRead])
+@router.get("/{role_id}", response_model=ResponseSchema[RoleRead],
+            dependencies=[Depends(require_permission(ROLE_READ))])
 async def get_role(role_id: int, service: RoleService = Depends(get_role_service)):
     data = await service.get_role(role_id)
     permissions = [PermissionRead.model_validate(p) for p in data.permissions]
@@ -55,25 +63,29 @@ async def get_role(role_id: int, service: RoleService = Depends(get_role_service
     return ResponseSchema[RoleRead](data=rd)
 
 # GET   /api/v1/roles   角色列表
-@router.get("", response_model=ResponseSchema[list[RoleRead]])
+@router.get("", response_model=ResponseSchema[list[RoleRead]],
+            dependencies=[Depends(require_permission(ROLE_READ))])
 async def get_roles(service: RoleService = Depends(get_role_service)):
     data = await service.list_roles()
     return ResponseSchema[list[RoleRead]](data=[RoleRead.model_validate(r) for r in data])
 
 # PUT   /api/v1/roles/{role_id} 更新角色
-@router.put("/{role_id}", response_model=ResponseSchema[RoleRead])
+@router.put("/{role_id}", response_model=ResponseSchema[RoleRead],
+            dependencies=[Depends(require_permission(ROLE_UPDATE))])
 async def update_role(role_id: int, role: RoleUpdate, service: RoleService = Depends(get_role_service)):
     data = await service.update_role(role_id, role)
     return ResponseSchema[RoleRead](data=RoleRead.model_validate(data))
 
 # DELETE    /api/v1/roles/{role_id} 删除角色
-@router.delete("/{role_id}", response_model=ResponseSchema[None])
+@router.delete("/{role_id}", response_model=ResponseSchema[None],
+               dependencies=[Depends(require_permission(ROLE_DELETE))])
 async def delete_role(role_id: int, service: RoleService = Depends(get_role_service)):
     await service.delete_role(role_id)
     return ResponseSchema[None](data=None)
 
 # PUT   /api/v1/roles/{role_id}/permissions 给角色分配权限
-@router.put("/{role_id}/permissions", response_model=ResponseSchema[RoleRead])
+@router.put("/{role_id}/permissions", response_model=ResponseSchema[RoleRead],
+            dependencies=[Depends(require_permission(ROLE_ASSIGN_PERMISSIONS))])
 async def update_role_permissions(role_id: int, role_permissions: RoleAssignPermissions,
         service: RoleService = Depends(get_role_service)):
     data = await service.assign_permissions(role_id, role_permissions.permission_ids)

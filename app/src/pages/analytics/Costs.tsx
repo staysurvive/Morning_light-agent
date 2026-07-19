@@ -19,8 +19,11 @@ import {
 } from '@/components/ui/select';
 import { analyticsService } from '@/services/analytics';
 import type { CostStats } from '@/services/types/analytics';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function AnalyticsCosts() {
+  const { can } = useAuthorization();
   const [stats, setStats] = useState<CostStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
@@ -65,6 +68,7 @@ export default function AnalyticsCosts() {
   };
 
   const budgetUsage = (stats.overview.totalCost / 50000) * 100;
+  const costPercentage = (value: number) => stats.overview.totalCost > 0 ? (value / stats.overview.totalCost) * 100 : 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -85,10 +89,10 @@ export default function AnalyticsCosts() {
               <SelectItem value="year">本年</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExport}>
+        {can(PERMISSIONS.analyticsExport) && <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             导出报表
-          </Button>
+        </Button>}
         </div>
       </div>
 
@@ -111,7 +115,7 @@ export default function AnalyticsCosts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ¥{(stats.overview.totalCost / stats.daily.length).toFixed(2)}
+              ¥{(stats.daily.length ? stats.overview.totalCost / stats.daily.length : 0).toFixed(2)}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
               基于{stats.daily.length}天数据
@@ -152,28 +156,28 @@ export default function AnalyticsCosts() {
               <div className="text-2xl font-bold">¥{stats.overview.modelCost.toFixed(2)}</div>
               <div className="text-sm text-muted-foreground mt-1">模型费用</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.overview.modelCost / stats.overview.totalCost) * 100).toFixed(1)}%
+                {costPercentage(stats.overview.modelCost).toFixed(1)}%
               </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold">¥{stats.overview.toolCost.toFixed(2)}</div>
               <div className="text-sm text-muted-foreground mt-1">工具费用</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.overview.toolCost / stats.overview.totalCost) * 100).toFixed(1)}%
+                {costPercentage(stats.overview.toolCost).toFixed(1)}%
               </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold">¥{stats.overview.storageCost.toFixed(2)}</div>
               <div className="text-sm text-muted-foreground mt-1">存储费用</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.overview.storageCost / stats.overview.totalCost) * 100).toFixed(1)}%
+                {costPercentage(stats.overview.storageCost).toFixed(1)}%
               </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold">¥{stats.overview.otherCost.toFixed(2)}</div>
               <div className="text-sm text-muted-foreground mt-1">其他费用</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {((stats.overview.otherCost / stats.overview.totalCost) * 100).toFixed(1)}%
+                {costPercentage(stats.overview.otherCost).toFixed(1)}%
               </div>
             </div>
             <div className="text-center p-4 border rounded-lg bg-primary/5">
@@ -217,7 +221,7 @@ export default function AnalyticsCosts() {
                     </div>
                   </TableCell>
                   <TableCell>{model.calls.toLocaleString()}</TableCell>
-                  <TableCell>¥{(model.cost / model.calls).toFixed(4)}</TableCell>
+                  <TableCell>¥{(model.calls ? model.cost / model.calls : 0).toFixed(4)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -295,7 +299,7 @@ export default function AnalyticsCosts() {
             </div>
             <div className="text-center p-3 border rounded-lg">
               <div className="text-lg font-bold">
-                {Math.floor((50000 - stats.overview.totalCost) / (stats.overview.totalCost / stats.daily.length))}天
+                {stats.overview.totalCost > 0 && stats.daily.length ? `${Math.max(0, Math.floor((50000 - stats.overview.totalCost) / (stats.overview.totalCost / stats.daily.length)))}天` : '-'}
               </div>
               <div className="text-xs text-muted-foreground">预计可用天数</div>
             </div>

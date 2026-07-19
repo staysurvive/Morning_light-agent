@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "MyApp"
     APP_ENV: str = "development"
     APP_DEBUG: bool = True
+    APP_SECRET_KEY: str = "17bfb8d274f91b4bf09f55d0c2d086319c251859c7a0edf1aef823e4c3c5adea"
 
     DB_HOST: str = "127.0.0.1"
     DB_PORT: int = 3306
@@ -20,6 +21,8 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "DEBUG"
     LOG_DIR: str = "logs"
+    KNOWLEDGE_STORAGE_DIR: str = "data/knowledge"
+    MAX_DOCUMENT_SIZE_MB: int = 20
 
     @property
     def DATABASE_URL(self) -> str:

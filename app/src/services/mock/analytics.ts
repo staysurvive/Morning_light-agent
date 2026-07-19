@@ -9,6 +9,7 @@ export const mockAnalyticsService = {
     agentId?: string;
     modelId?: string;
   }): Promise<UsageStats> {
+    void params
     await new Promise((resolve) => setTimeout(resolve, 500));
     return mockUsageStats;
   },
@@ -20,6 +21,7 @@ export const mockAnalyticsService = {
     agentId?: string;
     modelId?: string;
   }): Promise<CostStats> {
+    void params
     await new Promise((resolve) => setTimeout(resolve, 500));
     return mockCostStats;
   },
@@ -30,12 +32,14 @@ export const mockAnalyticsService = {
     endDate?: string;
     agentId?: string;
   }): Promise<EvaluationStats> {
+    void params
     await new Promise((resolve) => setTimeout(resolve, 500));
     return mockEvaluationStats;
   },
 
   // 导出报表
   async exportReport(type: 'usage' | 'cost' | 'evaluation', format: 'csv' | 'excel'): Promise<Blob> {
+    void format
     await new Promise((resolve) => setTimeout(resolve, 1000));
     
     let csvContent = '';

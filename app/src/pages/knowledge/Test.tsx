@@ -16,7 +16,7 @@ export default function KnowledgeTest() {
 
   const [kb, setKb] = useState<KnowledgeBaseRead | null>(null);
   const [query, setQuery] = useState('');
-  const [strategy, setStrategy] = useState('hybrid');
+  const [strategy, setStrategy] = useState('fulltext');
   const [topK, setTopK] = useState(5);
   const [threshold, setThreshold] = useState(0.7);
   const [results, setResults] = useState<RetrievalTestResult[]>([]);
@@ -27,7 +27,7 @@ export default function KnowledgeTest() {
   useEffect(() => {
     knowledgeService.getKnowledgeBase(kbId).then(data => {
       setKb(data);
-      setStrategy(data.retrieval_strategy);
+      setStrategy('fulltext');
       setTopK(data.top_k);
       setThreshold(data.similarity_threshold);
     }).catch(console.error);
@@ -78,9 +78,7 @@ export default function KnowledgeTest() {
                 <Select value={strategy} onValueChange={setStrategy}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vector">向量检索</SelectItem>
                     <SelectItem value="fulltext">全文检索</SelectItem>
-                    <SelectItem value="hybrid">混合检索</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

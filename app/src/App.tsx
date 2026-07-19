@@ -1,11 +1,13 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import DashboardLayout from './layouts/DashboardLayout'
 import AuthGuard from './components/AuthGuard'
+import PermissionGuard from './components/PermissionGuard'
+import AuthorizationProvider from './contexts/AuthorizationProvider'
+import { PERMISSIONS } from './services/permissions'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
-import Settings from './pages/Settings'
-import { AgentList, AgentCreate, AgentDetail, AgentTest, AgentVersions, AgentMonitor } from './pages/agent'
+import { AgentList, AgentCreate, AgentDetail, AgentVersions } from './pages/agent'
 import { ModelList, ModelProviders, ModelCreate } from './pages/model'
 import { PromptList, PromptCreate, PromptVersions } from './pages/prompt'
 import { KnowledgeList, KnowledgeCreate, KnowledgeDetail, KnowledgeDocuments, KnowledgeSegments, KnowledgeTest } from './pages/knowledge'
@@ -22,64 +24,63 @@ function App() {
         <Route path="/login" element={<Login />} />
         
         {/* Main App Routes - Inside DashboardLayout, protected by AuthGuard */}
-        <Route path="/" element={<AuthGuard><DashboardLayout /></AuthGuard>}>
-          <Route index element={<Dashboard />} />
+        <Route path="/" element={<AuthGuard><AuthorizationProvider><DashboardLayout /></AuthorizationProvider></AuthGuard>}>
+          <Route index element={<PermissionGuard permission={PERMISSIONS.dashboardRead}><Dashboard /></PermissionGuard>} />
           
           {/* User Routes */}
           <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings" element={<Navigate replace to="/profile" />} />
           
           {/* Agent Routes */}
-          <Route path="agents" element={<AgentList />} />
-          <Route path="agents/create" element={<AgentCreate />} />
-          <Route path="agents/:id" element={<AgentDetail />} />
-          <Route path="agents/:id/edit" element={<AgentCreate />} />
-          <Route path="agents/:id/test" element={<AgentTest />} />
-          <Route path="agents/:id/versions" element={<AgentVersions />} />
-          <Route path="agents/:id/monitor" element={<AgentMonitor />} />
+          <Route path="agents" element={<PermissionGuard permission={PERMISSIONS.agentRead}><AgentList /></PermissionGuard>} />
+          <Route path="agents/create" element={<PermissionGuard permission={PERMISSIONS.agentCreate}><AgentCreate /></PermissionGuard>} />
+          <Route path="agents/:id" element={<PermissionGuard permission={PERMISSIONS.agentRead}><AgentDetail /></PermissionGuard>} />
+          <Route path="agents/:id/edit" element={<PermissionGuard permission={PERMISSIONS.agentUpdate}><AgentCreate /></PermissionGuard>} />
+          <Route path="agents/:id/versions" element={<PermissionGuard permission={PERMISSIONS.agentRead}><AgentVersions /></PermissionGuard>} />
           
           {/* Model Routes */}
-          <Route path="models" element={<ModelList />} />
-          <Route path="models/create" element={<ModelCreate />} />
-          <Route path="models/:id/edit" element={<ModelCreate />} />
-          <Route path="models/providers" element={<ModelProviders />} />
+          <Route path="models" element={<PermissionGuard permission={PERMISSIONS.modelRead}><ModelList /></PermissionGuard>} />
+          <Route path="models/create" element={<PermissionGuard permission={PERMISSIONS.modelCreate}><ModelCreate /></PermissionGuard>} />
+          <Route path="models/:id/edit" element={<PermissionGuard permission={PERMISSIONS.modelUpdate}><ModelCreate /></PermissionGuard>} />
+          <Route path="models/providers" element={<PermissionGuard permission={PERMISSIONS.providerRead}><ModelProviders /></PermissionGuard>} />
           
           {/* Prompt Routes */}
-          <Route path="prompts" element={<PromptList />} />
-          <Route path="prompts/create" element={<PromptCreate />} />
-          <Route path="prompts/:id/edit" element={<PromptCreate />} />
-          <Route path="prompts/:id/versions" element={<PromptVersions />} />
+          <Route path="prompts" element={<PermissionGuard permission={PERMISSIONS.promptRead}><PromptList /></PermissionGuard>} />
+          <Route path="prompts/create" element={<PermissionGuard permission={PERMISSIONS.promptCreate}><PromptCreate /></PermissionGuard>} />
+          <Route path="prompts/:id/edit" element={<PermissionGuard permission={PERMISSIONS.promptUpdate}><PromptCreate /></PermissionGuard>} />
+          <Route path="prompts/:id/versions" element={<PermissionGuard permission={PERMISSIONS.promptRead}><PromptVersions /></PermissionGuard>} />
           
           {/* Knowledge Routes */}
-          <Route path="knowledge" element={<KnowledgeList />} />
-          <Route path="knowledge/create" element={<KnowledgeCreate />} />
-          <Route path="knowledge/:id" element={<KnowledgeDetail />} />
-          <Route path="knowledge/:id/documents" element={<KnowledgeDocuments />} />
-          <Route path="knowledge/:id/segments" element={<KnowledgeSegments />} />
-          <Route path="knowledge/:id/test" element={<KnowledgeTest />} />
+          <Route path="knowledge" element={<PermissionGuard permission={PERMISSIONS.knowledgeRead}><KnowledgeList /></PermissionGuard>} />
+          <Route path="knowledge/create" element={<PermissionGuard permission={PERMISSIONS.knowledgeCreate}><KnowledgeCreate /></PermissionGuard>} />
+          <Route path="knowledge/:id" element={<PermissionGuard permission={PERMISSIONS.knowledgeRead}><KnowledgeDetail /></PermissionGuard>} />
+          <Route path="knowledge/:id/documents" element={<PermissionGuard permission={PERMISSIONS.knowledgeRead}><KnowledgeDocuments /></PermissionGuard>} />
+          <Route path="knowledge/:id/segments" element={<PermissionGuard permission={PERMISSIONS.knowledgeRead}><KnowledgeSegments /></PermissionGuard>} />
+          <Route path="knowledge/:id/test" element={<PermissionGuard permission={PERMISSIONS.knowledgeRetrieve}><KnowledgeTest /></PermissionGuard>} />
           
           {/* Tool Routes */}
-          <Route path="tools" element={<ToolList />} />
-          <Route path="tools/create" element={<ToolCreate />} />
-          <Route path="tools/:id" element={<ToolDetail />} />
+          <Route path="tools" element={<PermissionGuard permission={PERMISSIONS.toolRead}><ToolList /></PermissionGuard>} />
+          <Route path="tools/create" element={<PermissionGuard permission={PERMISSIONS.toolCreate}><ToolCreate /></PermissionGuard>} />
+          <Route path="tools/:id" element={<PermissionGuard permission={PERMISSIONS.toolRead}><ToolDetail /></PermissionGuard>} />
+          <Route path="tools/:id/edit" element={<PermissionGuard permission={PERMISSIONS.toolUpdate}><ToolCreate /></PermissionGuard>} />
           
           {/* Conversation Routes */}
-          <Route path="conversations" element={<ConversationList />} />
-          <Route path="conversations/:id" element={<ConversationDetail />} />
+          <Route path="conversations" element={<PermissionGuard permission={PERMISSIONS.conversationRead}><ConversationList /></PermissionGuard>} />
+          <Route path="conversations/:id" element={<PermissionGuard permission={PERMISSIONS.conversationRead}><ConversationDetail /></PermissionGuard>} />
           
           {/* Analytics Routes */}
-          <Route path="analytics" element={<AnalyticsUsage />} />
-          <Route path="analytics/costs" element={<AnalyticsCosts />} />
-          <Route path="analytics/evaluation" element={<AnalyticsEvaluation />} />
+          <Route path="analytics" element={<PermissionGuard permission={PERMISSIONS.analyticsRead}><AnalyticsUsage /></PermissionGuard>} />
+          <Route path="analytics/costs" element={<PermissionGuard permission={PERMISSIONS.analyticsRead}><AnalyticsCosts /></PermissionGuard>} />
+          <Route path="analytics/evaluation" element={<PermissionGuard permission={PERMISSIONS.analyticsRead}><AnalyticsEvaluation /></PermissionGuard>} />
           
           {/* System Routes */}
-          <Route path="system/users" element={<SystemUsers />} />
-          <Route path="system/roles" element={<SystemRoles />} />
-          <Route path="system/permissions" element={<SystemPermissions />} />
-          <Route path="system/api-keys" element={<SystemApiKeys />} />
-          <Route path="system/audit" element={<SystemAudit />} />
-          <Route path="system/alerts" element={<SystemAlerts />} />
-          <Route path="system/settings" element={<SystemSettings />} />
+          <Route path="system/users" element={<PermissionGuard permission={PERMISSIONS.userRead}><SystemUsers /></PermissionGuard>} />
+          <Route path="system/roles" element={<PermissionGuard permission={PERMISSIONS.roleRead}><SystemRoles /></PermissionGuard>} />
+          <Route path="system/permissions" element={<PermissionGuard permission={PERMISSIONS.permissionRead}><SystemPermissions /></PermissionGuard>} />
+          <Route path="system/api-keys" element={<PermissionGuard permission={PERMISSIONS.apiKeyRead}><SystemApiKeys /></PermissionGuard>} />
+          <Route path="system/audit" element={<PermissionGuard permission={PERMISSIONS.auditRead}><SystemAudit /></PermissionGuard>} />
+          <Route path="system/alerts" element={<PermissionGuard permission={PERMISSIONS.alertRead}><SystemAlerts /></PermissionGuard>} />
+          <Route path="system/settings" element={<PermissionGuard permission={PERMISSIONS.settingsRead}><SystemSettings /></PermissionGuard>} />
           <Route path="*" element={<div className="p-6 text-center text-muted-foreground">页面开发中...</div>} />
         </Route>
       </Routes>

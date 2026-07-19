@@ -1,5 +1,4 @@
 # service 负责做业务逻辑 ， 与数据库交互
-from dns import node
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import BizException
 from src.modules.user.model import User
@@ -36,6 +35,10 @@ class UserService:
 
     async def list_users(self, offset: int = 0, limit: int = 100):
         return await self.repo.get_all(offset=offset, limit=limit)
+
+    async def delete_user(self, user_id: int) -> None:
+        if not await self.repo.delete_by_id(user_id):
+            raise BizException(code=404, message="用户不存在")
 
     async def assign_roles(self, user_id: int, role_ids: list[int]) -> User:
         # 1. 查找用户，不存在抛异常

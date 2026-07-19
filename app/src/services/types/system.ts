@@ -4,39 +4,41 @@ export interface User {
   name: string
   email: string
   avatar?: string
-  roleId: string
-  roleName: string
-  status: 'active' | 'disabled'
+  role: string
+  status: 'active' | 'inactive'
+  department: string
   lastLoginAt: string
   createdAt: string
-  updatedAt: string
 }
 
 export interface Role {
   id: string
   name: string
+  displayName: string
   description: string
-  permissions: Permission[]
+  permissions: string[]
   userCount: number
-  isSystem: boolean
   createdAt: string
   updatedAt: string
 }
 
 export interface Permission {
-  module: string
-  actions: ('view' | 'create' | 'edit' | 'delete' | 'publish')[]
+  id: string
+  code: string
+  name: string
+  description: string | null
 }
 
 export interface ApiKey {
   id: string
   name: string
   key: string
-  permissions: 'all' | 'readonly' | 'agent_only'
+  permissions: string[]
   status: 'active' | 'disabled' | 'expired'
   rateLimit: number
-  callCount: number
-  lastUsedAt: string
+  usageCount: number
+  lastUsedAt: string | null
+  expiresAt: string | null
   createdBy: string
   createdAt: string
 }
@@ -44,20 +46,25 @@ export interface ApiKey {
 export interface AuditLog {
   id: string
   userId: string
-  username: string
-  action: 'create' | 'update' | 'delete' | 'publish' | 'login' | 'logout' | 'config' | 'upload'
-  module: 'agent' | 'model' | 'prompt' | 'knowledge' | 'tool' | 'system' | 'user'
-  targetId?: string
-  targetName?: string
-  detail: string
-  ipAddress: string
-  createdAt: string
+  userName: string
+  action: string
+  resource: string
+  resourceName: string
+  details: Record<string, unknown>
+  ip: string
+  userAgent: string
+  status: 'success' | 'failed'
+  timestamp: string
+  module?: string
+  detail?: string
+  ipAddress?: string
 }
 
 export interface AlertRule {
   id: string
   name: string
-  description: string
+  description: string | null
+  notifications: string[]
   condition: {
     metric: string
     operator: 'gt' | 'lt' | 'eq' | 'gte' | 'lte'

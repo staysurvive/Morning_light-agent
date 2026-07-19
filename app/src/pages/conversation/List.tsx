@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, MessageSquare, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,26 +22,34 @@ import {
 } from '@/components/ui/select';
 import { conversationService } from '@/services/conversation';
 import type { Conversation } from '@/services/types/conversation';
+import Pagination from '@/components/Pagination';
 
 export default function ConversationList() {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     loadConversations();
-  }, [search, status]);
+  }, [search, status, page, pageSize]);
+
+  useEffect(() => { setPage(1); }, [search, status]);
 
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const params: any = { pageSize: 20 };
+      const params: { page: number; pageSize: number; search?: string; status?: string } = { page, pageSize };
       if (search) params.search = search;
       if (status !== 'all') params.status = status;
       
       const response = await conversationService.getConversations(params);
       setConversations(response.data);
+      setTotal(response.total);
     } catch (error) {
       console.error('加载对话列表失败:', error);
     } finally {
@@ -113,7 +122,7 @@ export default function ConversationList() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {((conversations.filter(c => c.status === 'completed').length / conversations.length) * 100).toFixed(1)}%
+              {conversations.length ? ((conversations.filter(c => c.status === 'completed').length / conversations.length) * 100).toFixed(1) : '0.0'}%
             </div>
           </CardContent>
         </Card>
@@ -190,7 +199,7 @@ export default function ConversationList() {
                       {new Date(conv.startedAt).toLocaleString('zh-CN')}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" title="查看详情" onClick={() => navigate(`/conversations/${conv.id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -199,6 +208,7 @@ export default function ConversationList() {
               )}
             </TableBody>
           </Table>
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
     </div>

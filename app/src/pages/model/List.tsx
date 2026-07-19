@@ -10,26 +10,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { modelService } from '@/services/model';
 import type { ModelRead } from '@/services/model';
 import Pagination from '@/components/Pagination';
-
-const PAGE_SIZE = 5;
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function ModelList() {
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [models, setModels] = useState<ModelRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<number | null>(null);
 
   useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { loadModels(); }, [page, search]);
+  useEffect(() => { loadModels(); }, [page, pageSize, search]);
 
   const loadModels = async () => {
     try {
       setLoading(true);
-      const res = await modelService.getModels({ page, page_size: PAGE_SIZE, keyword: search || undefined });
+      const res = await modelService.getModels({ page, page_size: pageSize, keyword: search || undefined });
       setModels(res.items);
       setTotal(res.total);
     } catch (error) {
@@ -70,12 +72,12 @@ export default function ModelList() {
           <p className="text-muted-foreground mt-1">管理和配置AI模型</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/models/providers')}>
+          {can(PERMISSIONS.providerRead) && <Button variant="outline" onClick={() => navigate('/models/providers')}>
             <Settings className="mr-2 h-4 w-4" />供应商管理
-          </Button>
-          <Button onClick={() => navigate('/models/create')}>
+          </Button>}
+          {can(PERMISSIONS.modelCreate) && <Button onClick={() => navigate('/models/create')}>
             <Plus className="mr-2 h-4 w-4" />添加模型
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -140,26 +142,26 @@ export default function ModelList() {
                   <TableCell>{model.context_length.toLocaleString()}</TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div>${model.input_price}/{model.currency}</div>
-                      <div>${model.output_price}/{model.currency}</div>
+                      <div>{model.input_price} {model.currency}</div>
+                      <div>{model.output_price} {model.currency}</div>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(model.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/models/${model.id}/edit`)}>
+                      {can(PERMISSIONS.modelUpdate) && <Button variant="ghost" size="sm" onClick={() => navigate(`/models/${model.id}/edit`)}>
                         <Settings className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setModelToDelete(model.id); setDeleteDialogOpen(true); }}>
+                      </Button>}
+                      {can(PERMISSIONS.modelDelete) && <Button variant="ghost" size="sm" onClick={() => { setModelToDelete(model.id); setDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 

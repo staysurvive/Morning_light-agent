@@ -1,4 +1,6 @@
-from fastapi import Depends,Query
+from collections.abc import Awaitable, Callable
+
+from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.infra.database import get_db
 from src.core.exceptions import BizException
@@ -7,7 +9,7 @@ from src.modules.user.model import User
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ) -> User:
     """从 JWT token 中解析当前登录用户，用于保护接口"""
     try:
@@ -23,6 +25,30 @@ async def get_current_user(
         raise BizException(code=401, message="账号已被禁用")
 
     return user
+
+
+def user_has_permission(user: User, permission_code: str) -> bool:
+    if user.is_superuser:
+        return True
+    return any(
+        permission.code == permission_code
+        for role in user.roles
+        for permission in role.permissions
+    )
+
+
+def require_permission(permission_code: str) -> Callable[..., Awaitable[User]]:
+    async def permission_dependency(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        if not user_has_permission(current_user, permission_code):
+            raise BizException(
+                code=403,
+                message=f"权限不足，需要权限：{permission_code}",
+            )
+        return current_user
+
+    return permission_dependency
 
 # api/vi/users?page=1&page_size=10&keyword=张三
 #

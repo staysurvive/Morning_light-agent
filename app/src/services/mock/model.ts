@@ -39,14 +39,14 @@ export const mockModelService = {
     return p;
   },
 
-  async createProvider(data: any): Promise<ProviderRead> {
+  async createProvider(data: Pick<ProviderRead, 'name' | 'type' | 'endpoint'> & Partial<ProviderRead>): Promise<ProviderRead> {
     await delay(400);
     const newP: ProviderRead = { id: mockProviders.length + 1, name: data.name, type: data.type, status: 'disconnected', endpoint: data.endpoint, description: data.description || null, model_count: 0 };
     mockProviders.push(newP);
     return newP;
   },
 
-  async updateProvider(id: number, data: any): Promise<ProviderRead> {
+  async updateProvider(id: number, data: Partial<ProviderRead>): Promise<ProviderRead> {
     await delay(300);
     const idx = mockProviders.findIndex(p => p.id === id);
     if (idx === -1) throw new Error('Provider not found');
@@ -60,7 +60,8 @@ export const mockModelService = {
     if (idx !== -1) mockProviders.splice(idx, 1);
   },
 
-  async testProviderConnection(id: number): Promise<Record<string, any>> {
+  async testProviderConnection(id: number): Promise<Record<string, unknown>> {
+    void id
     await delay(1000);
     return { success: true, message: '连接成功', latency_ms: 120 };
   },
@@ -83,7 +84,7 @@ export const mockModelService = {
     return m;
   },
 
-  async createModel(data: any): Promise<ModelRead> {
+  async createModel(data: Pick<ModelRead, 'name' | 'model_id' | 'provider_id'> & Partial<ModelRead>): Promise<ModelRead> {
     await delay(400);
     const provider = mockProviders.find(p => p.id === data.provider_id);
     const newM: ModelRead = { id: mockModels.length + 1, name: data.name, model_id: data.model_id, provider_id: data.provider_id, provider_name: provider?.name || '', capabilities: data.capabilities || [], context_length: data.context_length || 4096, status: 'available', input_price: data.input_price || 0, output_price: data.output_price || 0, currency: data.currency || 'USD', is_default: data.is_default || false, description: data.description || null };
@@ -91,7 +92,7 @@ export const mockModelService = {
     return newM;
   },
 
-  async updateModel(id: number, data: any): Promise<ModelRead> {
+  async updateModel(id: number, data: Partial<ModelRead>): Promise<ModelRead> {
     await delay(300);
     const idx = mockModels.findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Model not found');

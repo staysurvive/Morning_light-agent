@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Edit, Play, Pause, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { agentService } from '@/services/agent';
 import type { AgentRead, AgentVersionRead } from '@/services/agent';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function AgentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [agent, setAgent] = useState<AgentRead | null>(null);
   const [versions, setVersions] = useState<AgentVersionRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +50,14 @@ export default function AgentDetail() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!agent) return;
+    try {
+      await agentService.publishAgent(agent.id, '从管理台发布');
+      loadAgent();
+    } catch (error) { console.error('发布失败:', error); }
+  };
+
   if (loading || !agent) {
     return <div className="p-6">加载中...</div>;
   }
@@ -74,16 +85,17 @@ export default function AgentDetail() {
           <Badge variant={statusVariants[agent.status] ?? 'outline'}>
             {statusLabels[agent.status] ?? agent.status}
           </Badge>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/agents/${id}/edit`)}>
+          {agent.status === 'draft' && can(PERMISSIONS.agentPublish) && <Button variant="outline" size="sm" onClick={handlePublish}><Upload className="h-4 w-4 mr-2" />发布</Button>}
+          {can(PERMISSIONS.agentUpdate) && <Button variant="outline" size="sm" onClick={() => navigate(`/agents/${id}/edit`)}>
             <Edit className="h-4 w-4 mr-2" />编辑
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleToggleStatus}>
+          </Button>}
+          {agent.status !== 'draft' && can(PERMISSIONS.agentStartStop) && <Button variant="outline" size="sm" onClick={handleToggleStatus}>
             {agent.status === 'active' ? (
               <><Pause className="h-4 w-4 mr-2" />停止</>
             ) : (
               <><Play className="h-4 w-4 mr-2" />启动</>
             )}
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -101,7 +113,7 @@ export default function AgentDetail() {
             <CardTitle className="text-sm font-medium">成功率</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(agent.success_rate * 100).toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{agent.success_rate.toFixed(1)}%</div>
           </CardContent>
         </Card>
         <Card>

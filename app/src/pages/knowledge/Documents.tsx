@@ -11,10 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { knowledgeService } from '@/services/knowledge';
 import type { KnowledgeBaseRead, DocumentRead, SegmentRead } from '@/services/knowledge';
 import Pagination from '@/components/Pagination';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 const PAGE_SIZE = 5;
 
 export default function KnowledgeDocuments() {
+  const { can } = useAuthorization();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const kbId = Number(id);
@@ -127,13 +130,13 @@ export default function KnowledgeDocuments() {
             <p className="text-xs text-muted-foreground">文档管理</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        {can(PERMISSIONS.knowledgeDocumentManage) && <div className="flex items-center gap-2">
           <input type="file" id="file-upload" multiple accept=".pdf,.docx,.md,.txt,.html,.csv" onChange={handleUpload} className="hidden" />
           <Button onClick={() => document.getElementById('file-upload')?.click()} disabled={uploading}>
             {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
             {uploading ? '上传中...' : '上传文档'}
           </Button>
-        </div>
+        </div>}
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -192,14 +195,14 @@ export default function KnowledgeDocuments() {
                         <Button variant="ghost" size="sm" title="查看分段" onClick={() => openSegDrawer(doc)} disabled={doc.status !== 'completed'}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {doc.status === 'failed' && (
+                        {doc.status === 'failed' && can(PERMISSIONS.knowledgeDocumentManage) && (
                           <Button variant="ghost" size="sm" title="重试" onClick={() => handleRetry(doc.id)}>
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" title="删除" onClick={() => handleDelete(doc.id)}>
+                        {can(PERMISSIONS.knowledgeDocumentManage) && <Button variant="ghost" size="sm" title="删除" onClick={() => handleDelete(doc.id)}>
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </Button>}
                       </div>
                     </TableCell>
                   </TableRow>

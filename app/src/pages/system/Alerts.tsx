@@ -5,24 +5,60 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Modal from '@/components/Modal';
+import InlineNotice from '@/components/InlineNotice';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 import { systemService } from '@/services/system';
-import type { SystemAlert } from '@/services/types/system';
+import type { AlertRule, SystemAlert } from '@/services/types/system';
 
 export default function SystemAlerts() {
+  const { can } = useAuthorization();
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [rules, setRules] = useState<AlertRule[]>([]);
+  const [ruleOpen, setRuleOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [ruleForm, setRuleForm] = useState({ name: '', metric: '', operator: 'gt', threshold: 0, duration: 0 });
 
-  const loadAlerts = async () => {
-    try {
-      const data = await systemService.getSystemAlerts();
-      setAlerts(data);
-    } catch (error) {
-      console.error('加载告警失败:', error);
-    }
+  const loadAlerts = () => {
+    Promise.all([systemService.getSystemAlerts(), systemService.getAlertRules()])
+      .then(([alertItems, ruleItems]) => { setAlerts(alertItems); setRules(ruleItems); })
+      .catch((error: unknown) => console.error('加载告警失败:', error));
   };
 
   useEffect(() => {
     loadAlerts();
   }, []);
+
+  const createRule = async () => {
+    try {
+      await systemService.createAlertRule({
+        name: ruleForm.name,
+        description: null,
+        condition: { metric: ruleForm.metric, operator: ruleForm.operator as 'gt', threshold: ruleForm.threshold, duration: ruleForm.duration },
+        notifications: [],
+      });
+      setRuleOpen(false);
+      setRuleForm({ name: '', metric: '', operator: 'gt', threshold: 0, duration: 0 });
+      loadAlerts();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : '创建规则失败'); }
+  };
+
+  const toggleRule = async (rule: AlertRule) => {
+    try {
+      await systemService.updateAlertRule(rule.id, { status: rule.status === 'enabled' ? 'disabled' : 'enabled' });
+      loadAlerts();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : '更新规则失败'); }
+  };
+
+  const deleteRule = async (rule: AlertRule) => {
+    if (!window.confirm(`确定删除“${rule.name}”吗？`)) return;
+    try { await systemService.deleteAlertRule(rule.id); loadAlerts(); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : '删除规则失败'); }
+  };
 
   const handleAcknowledge = async (id: string) => {
     try {
@@ -45,11 +81,13 @@ export default function SystemAlerts() {
   const getSeverityBadge = (severity: string) => {
     const variants: Record<string, 'default' | 'destructive' | 'secondary'> = {
       high: 'destructive',
+      critical: 'destructive',
       medium: 'default',
       low: 'secondary',
     };
     const labels: Record<string, string> = {
       high: '高',
+      critical: '严重',
       medium: '中',
       low: '低',
     };
@@ -76,11 +114,12 @@ export default function SystemAlerts() {
           <h1 className="text-3xl font-bold">告警管理</h1>
           <p className="text-muted-foreground mt-1">管理系统告警和规则</p>
         </div>
-        <Button>
+        {can(PERMISSIONS.alertCreate) && <Button onClick={() => setRuleOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           创建告警规则
-        </Button>
+        </Button>}
       </div>
+      {error && <InlineNotice kind="error" message={error} />}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -155,7 +194,7 @@ export default function SystemAlerts() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    {can(PERMISSIONS.alertHandle) && <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -172,7 +211,7 @@ export default function SystemAlerts() {
                         <X className="h-4 w-4 mr-2" />
                         解决
                       </Button>
-                    </div>
+                    </div>}
                   </div>
                 </CardHeader>
               </Card>
@@ -187,56 +226,23 @@ export default function SystemAlerts() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  {
-                    name: 'Agent错误率告警',
-                    condition: '错误率 > 10% 持续 5 分钟',
-                    notification: '邮件',
-                    enabled: true,
-                  },
-                  {
-                    name: 'Token配额告警',
-                    condition: '使用率 > 80%',
-                    notification: '邮件',
-                    enabled: true,
-                  },
-                  {
-                    name: '响应延迟告警',
-                    condition: 'P95 > 5s 持续 10 分钟',
-                    notification: '邮件',
-                    enabled: true,
-                  },
-                  {
-                    name: '服务异常告警',
-                    condition: '服务不可用持续 1 分钟',
-                    notification: '邮件 + Webhook',
-                    enabled: true,
-                  },
-                  {
-                    name: '存储空间告警',
-                    condition: '使用率 > 90%',
-                    notification: '邮件',
-                    enabled: false,
-                  },
-                ].map((rule, index) => (
+                {rules.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">暂无告警规则</p> : rules.map((rule) => (
                   <div
-                    key={index}
+                    key={rule.id}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div className="flex-1">
                       <div className="font-medium">{rule.name}</div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        条件: {rule.condition}
+                        条件: {rule.condition.metric} {rule.condition.operator} {rule.condition.threshold}，持续 {rule.condition.duration} 分钟
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        通知: {rule.notification}
+                        通知: {rule.notifications.length ? rule.notifications.join(' + ') : '未配置'}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Switch checked={rule.enabled} />
-                      <Button variant="outline" size="sm">
-                        编辑
-                      </Button>
+                      {can(PERMISSIONS.alertUpdate) && <Switch checked={rule.status === 'enabled'} onCheckedChange={() => toggleRule(rule)} />}
+                      {can(PERMISSIONS.alertDelete) && <Button variant="outline" size="sm" onClick={() => deleteRule(rule)}>删除</Button>}
                     </div>
                   </div>
                 ))}
@@ -280,6 +286,9 @@ export default function SystemAlerts() {
           </Card>
         </TabsContent>
       </Tabs>
+      {ruleOpen && <Modal title="创建告警规则" description="规则仅保存配置，需接入指标采集器后才会自动评估" onClose={() => setRuleOpen(false)} footer={<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setRuleOpen(false)}>取消</Button><Button disabled={!ruleForm.name.trim() || !ruleForm.metric.trim()} onClick={createRule}>创建</Button></div>}>
+        <div className="space-y-4"><div className="space-y-2"><Label>规则名称</Label><Input value={ruleForm.name} onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })} /></div><div className="space-y-2"><Label>指标</Label><Input value={ruleForm.metric} onChange={(e) => setRuleForm({ ...ruleForm, metric: e.target.value })} placeholder="例如 error_rate" /></div><div className="grid grid-cols-3 gap-3"><div className="space-y-2"><Label>运算符</Label><Select value={ruleForm.operator} onValueChange={(value) => setRuleForm({ ...ruleForm, operator: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="gt">大于</SelectItem><SelectItem value="gte">大于等于</SelectItem><SelectItem value="lt">小于</SelectItem><SelectItem value="lte">小于等于</SelectItem><SelectItem value="eq">等于</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>阈值</Label><Input type="number" value={ruleForm.threshold} onChange={(e) => setRuleForm({ ...ruleForm, threshold: Number(e.target.value) })} /></div><div className="space-y-2"><Label>持续分钟</Label><Input type="number" min={0} value={ruleForm.duration} onChange={(e) => setRuleForm({ ...ruleForm, duration: Number(e.target.value) })} /></div></div></div>
+      </Modal>}
     </div>
   );
 }

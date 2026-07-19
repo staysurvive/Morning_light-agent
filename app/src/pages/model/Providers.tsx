@@ -10,16 +10,18 @@ import { Plus, Trash2, Zap, Edit } from 'lucide-react';
 import { modelService } from '@/services/model';
 import type { ProviderRead } from '@/services/model';
 import Pagination from '@/components/Pagination';
-
-const PAGE_SIZE = 5;
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 const PROVIDER_TYPES = ['openai', 'anthropic', 'aliyun', 'azure', 'local', 'custom'];
 
 export default function ModelProviders() {
+  const { can } = useAuthorization();
   const [providers, setProviders] = useState<ProviderRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [providerToDelete, setProviderToDelete] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -27,12 +29,12 @@ export default function ModelProviders() {
   const [testingId, setTestingId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: '', type: 'openai', endpoint: '', api_key: '', description: '' });
 
-  useEffect(() => { loadProviders(); }, [page]);
+  useEffect(() => { loadProviders(); }, [page, pageSize]);
 
   const loadProviders = async () => {
     try {
       setLoading(true);
-      const res = await modelService.getProviders({ page, page_size: PAGE_SIZE });
+      const res = await modelService.getProviders({ page, page_size: pageSize });
       setProviders(res.items);
       setTotal(res.total);
     } catch (error) {
@@ -80,10 +82,11 @@ export default function ModelProviders() {
   const handleTest = async (id: number) => {
     setTestingId(id);
     try {
-      await modelService.testProviderConnection(id);
-      alert('连接测试成功');
+      const result = await modelService.testProviderConnection(id);
+      alert(result.success ? '连接测试成功' : String(result.message ?? '连接测试失败'));
+      loadProviders();
     } catch (error) {
-      alert('连接测试失败');
+      alert(error instanceof Error ? error.message : '连接测试失败');
     } finally {
       setTestingId(null);
     }
@@ -106,9 +109,9 @@ export default function ModelProviders() {
           <h1 className="text-3xl font-bold">供应商管理</h1>
           <p className="text-muted-foreground mt-1">配置和管理模型供应商</p>
         </div>
-        <Button onClick={() => { setEditingProvider(null); setForm({ name: '', type: 'openai', endpoint: '', api_key: '', description: '' }); setFormOpen(true); }}>
+        {can(PERMISSIONS.providerCreate) && <Button onClick={() => { setEditingProvider(null); setForm({ name: '', type: 'openai', endpoint: '', api_key: '', description: '' }); setFormOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />添加供应商
-        </Button>
+        </Button>}
       </div>
 
       <Card>
@@ -138,22 +141,22 @@ export default function ModelProviders() {
                   <TableCell>{getStatusBadge(provider.status)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleTest(provider.id)} disabled={testingId === provider.id}>
+                      {can(PERMISSIONS.providerTest) && <Button variant="ghost" size="sm" onClick={() => handleTest(provider.id)} disabled={testingId === provider.id}>
                         <Zap className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(provider)}>
+                      </Button>}
+                      {can(PERMISSIONS.providerUpdate) && <Button variant="ghost" size="sm" onClick={() => handleEdit(provider)}>
                         <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setProviderToDelete(provider.id); setDeleteDialogOpen(true); }}>
+                      </Button>}
+                      {can(PERMISSIONS.providerDelete) && <Button variant="ghost" size="sm" onClick={() => { setProviderToDelete(provider.id); setDeleteDialogOpen(true); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      </Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination page={page} total={total} pageSize={pageSize} disabled={loading} onChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
         </CardContent>
       </Card>
 

@@ -5,19 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toolService } from '@/services/tool';
 import type { ToolRead } from '@/services/tool';
+import { useAuthorization } from '@/hooks/useAuthorization';
+import { PERMISSIONS } from '@/services/permissions';
 
 export default function ToolDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAuthorization();
   const [tool, setTool] = useState<ToolRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [testInput, setTestInput] = useState('{}');
-  const [testResult, setTestResult] = useState<{ success: boolean; output: any; error: string | null; latency_ms: number } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; output: unknown; error: string | null; latency_ms: number } | null>(null);
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function ToolDetail() {
   const handleTest = async () => {
     try {
       setTesting(true);
-      let input: Record<string, any> = {};
+      let input: Record<string, unknown> = {};
       try { input = JSON.parse(testInput); } catch { alert('输入参数不是合法的JSON'); return; }
       const result = await toolService.testTool(Number(id), input);
       setTestResult(result);
@@ -72,7 +74,7 @@ export default function ToolDetail() {
             </div>
           </div>
         </div>
-        <Button variant="outline" onClick={() => navigate(`/tools/${id}/edit`)}>编辑</Button>
+        {can(PERMISSIONS.toolUpdate) && <Button variant="outline" onClick={() => navigate(`/tools/${id}/edit`)}>编辑</Button>}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -82,7 +84,7 @@ export default function ToolDetail() {
         </Card>
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">成功率</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{(tool.success_rate * 100).toFixed(1)}%</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{tool.success_rate.toFixed(1)}%</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">平均延迟</CardTitle></CardHeader>
@@ -93,7 +95,7 @@ export default function ToolDetail() {
       <Tabs defaultValue="details">
         <TabsList>
           <TabsTrigger value="details">详情</TabsTrigger>
-          <TabsTrigger value="test">测试</TabsTrigger>
+          {can(PERMISSIONS.toolTest) && <TabsTrigger value="test">测试</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="details" className="space-y-4">
@@ -138,7 +140,7 @@ export default function ToolDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="test" className="space-y-4">
+        {can(PERMISSIONS.toolTest) && <TabsContent value="test" className="space-y-4">
           <Card>
             <CardHeader><CardTitle>参数输入 (JSON)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -180,7 +182,7 @@ export default function ToolDetail() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
     </div>
   );
