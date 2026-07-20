@@ -8373,12 +8373,26 @@
             "title": "File Type"
           },
           "file_size": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "File Size"
           },
-          "storage_path": {
-            "type": "string",
-            "title": "Storage Path"
+          "minio_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minio Path"
           },
           "status": {
             "type": "string",
@@ -8445,7 +8459,7 @@
           "file_name",
           "file_type",
           "file_size",
-          "storage_path",
+          "minio_path",
           "status",
           "segment_count",
           "word_count",
@@ -8751,7 +8765,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 150,
+                "maxLength": 100,
                 "minLength": 1
               },
               {
@@ -8848,7 +8862,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "maxLength": 150,
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name"
           },
@@ -8866,10 +8880,10 @@
           },
           "embedding_model": {
             "type": "string",
-            "maxLength": 150,
+            "maxLength": 100,
             "minLength": 1,
             "title": "Embedding Model",
-            "default": "text-embedding-3-small"
+            "default": "text-embedding-ada-002"
           },
           "chunk_size": {
             "type": "integer",
@@ -9044,7 +9058,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 150,
+                "maxLength": 200,
                 "minLength": 1
               },
               {
@@ -9069,7 +9083,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 150,
+                "maxLength": 100,
                 "minLength": 1
               },
               {
@@ -12430,13 +12444,6 @@
             "type": "integer",
             "title": "Position"
           },
-          "keywords": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Keywords"
-          },
           "hit_count": {
             "type": "integer",
             "title": "Hit Count"
@@ -12462,7 +12469,6 @@
           "word_count",
           "token_count",
           "position",
-          "keywords",
           "hit_count",
           "created_at",
           "updated_at"

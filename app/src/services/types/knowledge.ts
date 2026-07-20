@@ -38,7 +38,7 @@ export interface Segment {
   content: string
   wordCount: number
   tokenCount: number
-  keywords: string[]
+  keywords?: string[]
   hitCount: number
   createdAt: string
   updatedAt: string
@@ -49,5 +49,5 @@ export interface RetrievalResult {
   content: string
   score: number
   documentName: string
-  keywords: string[]
+  keywords?: string[]
 }

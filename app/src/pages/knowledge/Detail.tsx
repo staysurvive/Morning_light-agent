@@ -55,6 +55,21 @@ export default function KnowledgeDetail() {
   useEffect(() => {
     if (segDrawerOpen && segDoc) loadSegments();
   }, [segDrawerOpen, segDoc, segPage]);
+  useEffect(() => {
+    if (!documents.some((doc) => doc.status === 'pending' || doc.status === 'processing')) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const [kbData, docsData] = await Promise.all([
+          knowledgeService.getKnowledgeBase(kbId),
+          knowledgeService.getDocuments(kbId, { page: docPage, page_size: PAGE_SIZE }),
+        ]);
+        setKb(kbData);
+        setDocuments(docsData.items);
+        setDocTotal(docsData.total);
+      } catch (error) { console.error(error); }
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [documents, kbId, docPage]);
 
   const loadKb = async () => {
     try {

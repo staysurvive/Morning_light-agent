@@ -14,7 +14,7 @@ export default function KnowledgeCreate() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    embedding_model: 'text-embedding-3-small',
+    embedding_model: 'text-embedding-ada-002',
     chunk_method: 'fixed',
     chunk_size: 500,
     chunk_overlap: 50,

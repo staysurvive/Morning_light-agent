@@ -32,15 +32,15 @@ def _decode_text(data: bytes) -> str:
     raise ValueError("文本编码不受支持，请使用 UTF-8 或 GB18030")
 
 
-def extract_text(path: Path, file_type: str) -> str:
+def extract_text_bytes(data: bytes, file_type: str) -> str:
     if file_type == "pdf":
-        reader = PdfReader(str(path))
+        reader = PdfReader(io.BytesIO(data))
         return "\n\n".join((page.extract_text() or "").strip() for page in reader.pages).strip()
     if file_type == "docx":
-        document = DocxDocument(str(path))
+        document = DocxDocument(io.BytesIO(data))
         return "\n\n".join(paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip())
 
-    text = _decode_text(path.read_bytes())
+    text = _decode_text(data)
     if file_type in {"html", "htm"}:
         parser = _TextHTMLParser()
         parser.feed(text)
@@ -49,6 +49,12 @@ def extract_text(path: Path, file_type: str) -> str:
         rows = csv.reader(io.StringIO(text))
         return "\n".join(" | ".join(cell.strip() for cell in row) for row in rows)
     return text
+
+
+def extract_text(path: Path, file_type: str) -> str:
+    """Compatibility wrapper for local parser tests and one-off utilities."""
+
+    return extract_text_bytes(path.read_bytes(), file_type)
 
 
 def _group_parts(parts: list[str], size: int) -> list[str]:

@@ -1,6 +1,6 @@
 # 辰光 Agent 项目工作手册
 
-> 最后更新：2026-07-19  
+> 最后更新：2026-07-20
 > 当前阶段：管理平台后端与前端已完成第一轮真实 API 闭环  
 > 接口契约：`docs/openapi.json`，共 115 个 OpenAPI operations
 
@@ -45,12 +45,11 @@ Morning_light-agent/
 |           `-- types/           # 前端领域类型
 |-- src/                         # FastAPI 后端
 |   |-- core/                    # 配置、响应、异常、权限、加密、网络安全
-|   |-- infra/                   # MySQL 和 Redis 基础设施
+|   |-- infra/                   # MySQL、Redis 和 MinIO 基础设施
 |   |-- middlewares/             # 请求日志与审计日志
 |   |-- modules/                 # 按业务域划分的后端模块
 |   `-- scripts/                 # 超级管理员和 OpenAPI 工具
 |-- alembic/                     # 数据库迁移
-|-- data/knowledge/              # 默认知识文档本地存储目录
 |-- docs/
 |   |-- openapi.json             # 前后端唯一静态接口契约
 |   `-- PROJECT_GUIDE_FOR_SOL.md  # 本手册和功能变更记录
@@ -84,7 +83,7 @@ src/modules/<domain>/
 | 模型 | 分页 CRUD、供应商/关键词筛选、默认模型约束 | 列表、筛选、创建、编辑、删除 | 仅登记元数据和价格，不调用模型 |
 | Prompt | 分页 CRUD、发布、版本、回滚 | 编辑器、变量预览、发布、版本和回滚 | 不会自动注入或执行 Agent |
 | Agent | 分页 CRUD、发布、版本、回滚、启停 | 完整管理、模型选择和权限按钮 | 启停是配置状态，不代表运行进程已启动 |
-| 知识库 | CRUD、配置、上传、解析、分段、重试、删除、检索测试 | 知识库、文档、分段和检索页面 | 仅本地词项/全文检索；Embedding 字段为预留配置 |
+| 知识库 | CRUD、MinIO 上传、后台解析、分段、重试、删除、检索测试 | 知识库、文档、分段、状态轮询和检索页面 | 仅词项全文检索；Embedding 字段为预留配置 |
 | 工具 | 分页 CRUD、启停、测试、加密配置、执行指标 | 列表、创建/编辑、详情、测试和启停 | 仅 HTTP 工具可测试；内置/自定义工具不执行 |
 | 会话 | CRUD、轮次、链路、标注、JSON/文本导出 | 分页列表、详情、链路、标注、导出 | 记录由调用方写入，不负责生成回复 |
 | 分析 | 用量、费用、评估、CSV 导出 | 用量、成本和评估页面 | 只聚合已持久化会话；无账单来源时为 0 |
@@ -92,7 +91,7 @@ src/modules/<domain>/
 | 审计 | 自动记录认证后的 API 操作、分页筛选 | 分页、模块/状态/日期/关键字筛选、导出 | 不记录请求体；敏感查询参数会脱敏 |
 | 告警 | 告警 CRUD、确认/解决、规则 CRUD | 告警查看/处理、规则创建/启停/删除 | 规则不自动评估，也不自动通知 |
 | 系统设置 | 读取和更新平台设置 | 真实读取和保存 | SMTP 字段仅保存配置，不发送邮件 |
-| 工作台 | 真实会话、Agent、模型、告警和磁盘汇总 | 真实统计卡片、趋势、排行和资源用量 | 数据取决于已持久化记录 |
+| 工作台 | 真实会话、Agent、模型、告警和 MinIO 对象汇总 | 真实统计卡片、趋势、排行和资源用量 | 数据取决于已持久化记录和 MinIO 可用性 |
 
 ## 4. 接口契约
 
@@ -218,12 +217,15 @@ src/modules/<domain>/
 
 ### 6.3 知识库
 
-- 文件默认存储在 `data/knowledge`，可通过 `KNOWLEDGE_STORAGE_DIR` 修改；
+- 文件保存到 `MINIO_BUCKET` 指定的 MinIO bucket，对象名采用 `knowledge-bases/{知识库ID}/{UUID}.{扩展名}`；
+- 应用启动时会检查 bucket，不存在时自动创建；MinIO 不可用不会阻止其他模块启动，但上传功能会返回 503；
 - 单文件默认最大 20 MB，可通过 `MAX_DOCUMENT_SIZE_MB` 修改；
-- 支持文本、PDF 和 DOCX 文本提取；
+- 支持 PDF、DOCX、Markdown、TXT、HTML 和 CSV 文本提取；
+- 上传成功先写入 `pending` 文档记录，响应提交后由 FastAPI `BackgroundTasks` 下载对象、解析和分段；
+- 前端对 `pending/processing` 文档每 2 秒自动刷新，完成或失败后停止轮询；
 - 支持固定长度、句子和段落分段，固定分段校验 overlap 小于 chunk size；
 - 文档处理失败会保存错误信息，并支持重试；
-- 删除文档或知识库会同时清理数据库记录和本地源文件；
+- 删除文档或知识库会同时清理数据库记录、关联分段和 MinIO 对象；
 - 检索测试基于词项重叠和精确包含加权，只是本地全文检索；
 - `embedding_model` 是兼容未来扩展的预留配置；请求 Schema 只接受 `fulltext`，`vector` 和 `hybrid` 会直接校验失败。
 
@@ -243,13 +245,13 @@ src/modules/<domain>/
 - 标注支持 1~5 分、标签和备注；
 - 分析从会话、Token、成本和标注记录实时聚合，不填充演示值；
 - 工具、存储等没有独立账单来源时，成本报表返回 0；
-- 工作台统计今日调用、Token、成本、Agent 状态、7 日趋势、排行、告警和知识文件所在磁盘。
+- 工作台统计今日调用、Token、成本、Agent 状态、7 日趋势、排行、告警和 MinIO 文档对象同步情况。
 
 ## 7. 本地运行
 
 ### 7.1 后端
 
-前置条件：Python、MySQL 和 Redis 可用。仓库没有可依赖的 Docker Compose，数据库和 Redis 需要自行启动或连接已有实例。
+前置条件：Python、MySQL、Redis 和 MinIO 可用。仓库没有可依赖的 Docker Compose，这些服务需要自行启动或连接已有实例。
 
 ```powershell
 cd D:\Morning_light-agent
@@ -259,7 +261,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-编辑 `.env`，至少填写 MySQL、Redis 和随机的 `APP_SECRET_KEY`，然后执行：
+编辑 `.env`，至少填写 MySQL、Redis、MinIO 和随机的 `APP_SECRET_KEY`。MinIO 配置包括 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`MINIO_BUCKET` 和 `MINIO_SECURE`，然后执行：
 
 ```powershell
 alembic upgrade head
@@ -301,7 +303,7 @@ npm run dev
 
 ## 8. 数据库迁移
 
-当前数据库迁移头为 `1ef7a711510b`。主要业务迁移顺序：
+当前数据库迁移头为 `2d31a8c7f4e2`。主要业务迁移顺序：
 
 ```text
 66b777046b3a  seed_rbac_permissions
@@ -311,6 +313,7 @@ c6e99bac6d31  knowledge_management
 eb155c4d538b  tool_management
 ac8541d68b17  conversation_analytics
 1ef7a711510b  system_management_dashboard
+2d31a8c7f4e2  knowledge_minio_model
 ```
 
 开发规则：
@@ -346,12 +349,12 @@ npm run check:openapi
 
 ## 10. 当前质量基线
 
-2026-07-19 最终实测：
+2026-07-20 最终实测：
 
 | 检查 | 结果 |
 |---|---|
-| `python -m pytest -q` | 通过，30 passed |
-| `alembic current` | `1ef7a711510b (head)` |
+| `python -m pytest -q` | 通过，32 passed |
+| `alembic current` | `2d31a8c7f4e2 (head)` |
 | `alembic check` | 通过，无模型/迁移差异 |
 | `npm run check:openapi` | 通过，115/115，8 个明确后端专用操作 |
 | `npm run build` | 通过，TypeScript 与 Vite 生产构建成功 |
@@ -361,12 +364,15 @@ npm run check:openapi
 | 真实 SSRF 检查 | 私网供应商目标得到 HTTP 400 |
 | 真实密钥检查 | 工具头脱敏，提交占位值后原密钥仍保留 |
 | 真实审计检查 | `keyword` 后端筛选返回匹配记录 |
+| MinIO 对象检查 | bucket 创建、上传、下载校验和删除闭环通过 |
+| 知识库 MinIO 联调 | 临时知识库上传、后台解析、分段、状态更新和级联清理通过 |
 
 当前质量提示：
 
 - 前端构建产物主 JS 约 643 KB，Vite 提示大于 500 KB，后续可按路由懒加载拆包；
 - 21 个 Hook 依赖警告不阻断构建，但后续修改相关加载逻辑时应逐页收敛；
 - 尚无前端组件测试和端到端测试；当前环境的企业策略阻止浏览器访问 localhost，因此本轮使用构建和真实 HTTP 联调验证。
+- 知识文档解析当前使用 FastAPI 进程内 `BackgroundTasks`，服务重启时未完成任务不会自动恢复；生产环境应迁移到持久化任务队列。
 
 ## 11. 已知限制与下一阶段
 
@@ -453,8 +459,21 @@ npm run check:openapi
 - OpenAPI 覆盖检查通过 115/115，并保留 8 个明确的后端专用操作；
 - 删除会假装保存密码和偏好的旧账户设置页面及入口，旧 `/settings` 重定向到真实个人资料页；
 - 完成私网目标阻断、工具密钥保留、审计关键字和 HTTP 403 的真实接口验证；
-- 后端测试 30 passed，迁移无差异，前端构建通过，lint 0 错误；
+- 后端测试 32 passed，迁移无差异，前端构建通过，lint 0 错误；
 - 重写本手册的能力矩阵、接口统计、运行方式、安全边界、质量基线和已知限制。
+
+### 2026-07-20：知识库新模型与 MinIO 存储
+
+- 按新模型把 `KnowledgeDocument/KnowledgeSegment` 重命名为 `Document/Segment`，数据库表迁移为 `documents/segments`；
+- 知识库和文档创建者由用户外键快照调整为用户名字符串，历史创建者在迁移时完成回填；
+- 文档字段从本地 `storage_path/file_size_bytes` 调整为 `minio_path/file_size`，分段不再持久化可派生的关键词数组；
+- 新增 MinIO 客户端适配器、bucket 自动创建、对象上传、下载、删除和资源用量统计；
+- 文档上传后使用 FastAPI `BackgroundTasks` 执行 MinIO 下载、文本解析、分段写入和状态统计，失败会持久化错误信息；
+- 重试复用后台解析任务，删除文档或知识库会同步删除 MinIO 对象；
+- 前端 DTO 和 Mock 改用 `minio_path`，上传/重试后自动轮询 `pending/processing` 状态；
+- 新增迁移 `2d31a8c7f4e2`，数据库已升级且 `alembic check` 无差异；
+- MinIO 对象往返测试及知识库上传、解析、分段、删除完整联调通过，临时对象和数据库记录均已清理；
+- 当前仍只支持全文检索，Embedding 模型字段仍为预留配置；后台解析任务尚未迁移到持久化队列。
 
 ### 后续记录模板
 

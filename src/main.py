@@ -1,6 +1,9 @@
+import asyncio
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from src.infra.minio_client import ensure_bucket_exists
 from src.core.config import get_settings
 from src.middlewares.logging import LoggingMiddleware
 from src.core.exceptions import register_exception_handlers
@@ -31,6 +34,11 @@ async def  lifespan(app: FastAPI):
     setup_logger()  # 配置日志记录器
     setting = get_settings()
     logger.info(f"项目{setting.APP_NAME} 启动,环境：{setting.APP_ENV}")
+    # 确保minio桶的存在
+    try:
+        await asyncio.to_thread(ensure_bucket_exists)
+    except Exception as e:
+        logger.error(f"minio 桶创建失败，文件上传功能无法使用:{e}")
     yield
     # 项目停止时执行
     # 关闭数据库连接池

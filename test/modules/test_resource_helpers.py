@@ -1,7 +1,7 @@
 import pytest
 
 from src.core.exceptions import BizException
-from src.modules.knowledge.parser import extract_keywords, split_text, text_terms
+from src.modules.knowledge.parser import extract_keywords, extract_text_bytes, split_text, text_terms
 from src.modules.knowledge.schema import KnowledgeBaseCreate
 from src.core.network import assert_public_http_target
 from src.modules.tool.service import _redact_config, _restore_redacted_headers, _validate_http_config
@@ -20,6 +20,10 @@ def test_chinese_terms_and_keywords_are_extracted():
 
     assert "rbac" in terms
     assert "权限" in keywords
+
+
+def test_plain_text_is_extracted_from_object_bytes():
+    assert extract_text_bytes("辰光知识库".encode("utf-8"), "txt") == "辰光知识库"
 
 
 @pytest.mark.parametrize("strategy", ["vector", "hybrid"])

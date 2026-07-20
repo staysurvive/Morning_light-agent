@@ -2,7 +2,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.base_repository import BaseRepository
-from src.modules.knowledge.model import KnowledgeBase, KnowledgeDocument, KnowledgeSegment
+from src.modules.knowledge.model import Document, KnowledgeBase, Segment
 
 
 class KnowledgeBaseRepository(BaseRepository[KnowledgeBase]):
@@ -22,43 +22,47 @@ class KnowledgeBaseRepository(BaseRepository[KnowledgeBase]):
         return list(result.scalars().all()), int(total or 0)
 
 
-class DocumentRepository(BaseRepository[KnowledgeDocument]):
+class DocumentRepository(BaseRepository[Document]):
     def __init__(self, db: AsyncSession):
-        super().__init__(KnowledgeDocument, db)
+        super().__init__(Document, db)
 
-    async def get_for_base(self, knowledge_base_id: int, document_id: int) -> KnowledgeDocument | None:
-        return await self.db.scalar(select(KnowledgeDocument).where(
-            KnowledgeDocument.id == document_id,
-            KnowledgeDocument.knowledge_base_id == knowledge_base_id,
+    async def get_for_base(self, knowledge_base_id: int, document_id: int) -> Document | None:
+        return await self.db.scalar(select(Document).where(
+            Document.id == document_id,
+            Document.knowledge_base_id == knowledge_base_id,
         ))
 
-    async def list_for_base(self, knowledge_base_id: int) -> list[KnowledgeDocument]:
-        result = await self.db.execute(select(KnowledgeDocument).where(
-            KnowledgeDocument.knowledge_base_id == knowledge_base_id
-        ).order_by(KnowledgeDocument.id))
+    async def list_for_base(self, knowledge_base_id: int) -> list[Document]:
+        result = await self.db.execute(select(Document).where(
+            Document.knowledge_base_id == knowledge_base_id
+        ).order_by(Document.id))
         return list(result.scalars().all())
 
-    async def search_page(self, knowledge_base_id: int, offset: int, limit: int, keyword: str | None) -> tuple[list[KnowledgeDocument], int]:
-        stmt = select(KnowledgeDocument).where(KnowledgeDocument.knowledge_base_id == knowledge_base_id)
+    async def search_page(self, knowledge_base_id: int, offset: int, limit: int, keyword: str | None) -> tuple[list[Document], int]:
+        stmt = select(Document).where(Document.knowledge_base_id == knowledge_base_id)
         if keyword:
-            stmt = stmt.where(KnowledgeDocument.file_name.like(f"%{keyword}%"))
+            stmt = stmt.where(Document.file_name.like(f"%{keyword}%"))
         total = await self.db.scalar(select(func.count()).select_from(stmt.subquery()))
-        result = await self.db.execute(stmt.order_by(KnowledgeDocument.id.desc()).offset(offset).limit(limit))
+        result = await self.db.execute(stmt.order_by(Document.id.desc()).offset(offset).limit(limit))
         return list(result.scalars().all()), int(total or 0)
 
 
-class SegmentRepository(BaseRepository[KnowledgeSegment]):
+class SegmentRepository(BaseRepository[Segment]):
     def __init__(self, db: AsyncSession):
-        super().__init__(KnowledgeSegment, db)
+        super().__init__(Segment, db)
 
-    async def get_for_base(self, knowledge_base_id: int, segment_id: int) -> KnowledgeSegment | None:
-        return await self.db.scalar(select(KnowledgeSegment).where(
-            KnowledgeSegment.id == segment_id,
-            KnowledgeSegment.knowledge_base_id == knowledge_base_id,
+    async def get_for_base(self, knowledge_base_id: int, segment_id: int) -> Segment | None:
+        return await self.db.scalar(select(Segment).where(
+            Segment.id == segment_id,
+            Segment.knowledge_base_id == knowledge_base_id,
         ))
 
     async def delete_for_document(self, document_id: int) -> None:
-        await self.db.execute(delete(KnowledgeSegment).where(KnowledgeSegment.document_id == document_id))
+        await self.db.execute(delete(Segment).where(Segment.document_id == document_id))
+
+    async def bulk_create(self, segments: list[Segment]) -> None:
+        self.db.add_all(segments)
+        await self.db.flush()
 
     async def search_page(
         self,
@@ -67,21 +71,20 @@ class SegmentRepository(BaseRepository[KnowledgeSegment]):
         limit: int,
         document_id: int | None,
         keyword: str | None = None,
-    ) -> tuple[list[KnowledgeSegment], int]:
-        stmt = select(KnowledgeSegment).where(KnowledgeSegment.knowledge_base_id == knowledge_base_id)
+    ) -> tuple[list[Segment], int]:
+        stmt = select(Segment).where(Segment.knowledge_base_id == knowledge_base_id)
         if document_id is not None:
-            stmt = stmt.where(KnowledgeSegment.document_id == document_id)
+            stmt = stmt.where(Segment.document_id == document_id)
         if keyword:
-            stmt = stmt.where(KnowledgeSegment.content.like(f"%{keyword}%"))
+            stmt = stmt.where(Segment.content.like(f"%{keyword}%"))
         total = await self.db.scalar(select(func.count()).select_from(stmt.subquery()))
         result = await self.db.execute(
-            stmt.order_by(KnowledgeSegment.document_id, KnowledgeSegment.position)
-            .offset(offset).limit(limit)
+            stmt.order_by(Segment.document_id, Segment.position).offset(offset).limit(limit)
         )
         return list(result.scalars().all()), int(total or 0)
 
-    async def list_for_retrieval(self, knowledge_base_id: int) -> list[KnowledgeSegment]:
-        result = await self.db.execute(select(KnowledgeSegment).where(
-            KnowledgeSegment.knowledge_base_id == knowledge_base_id
+    async def list_for_retrieval(self, knowledge_base_id: int) -> list[Segment]:
+        result = await self.db.execute(select(Segment).where(
+            Segment.knowledge_base_id == knowledge_base_id
         ))
         return list(result.scalars().all())

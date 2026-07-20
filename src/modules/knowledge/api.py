@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.base_schema import PageResult, ResponseSchema
@@ -25,6 +25,7 @@ from src.modules.knowledge.schema import (
     SegmentUpdate,
 )
 from src.modules.knowledge.service import KnowledgeService
+from src.modules.knowledge.tasks import process_document
 from src.modules.user.model import User
 
 router = APIRouter(prefix="/knowledge-bases", tags=["Knowledge"])
@@ -87,13 +88,14 @@ async def list_documents(knowledge_base_id: int, params: PageParams = Depends(),
 @router.post("/{knowledge_base_id}/documents", response_model=ResponseSchema[DocumentRead])
 async def upload_document(
     knowledge_base_id: int,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: User = Depends(require_permission(KNOWLEDGE_DOCUMENT_MANAGE)),
     service: KnowledgeService = Depends(get_knowledge_service),
 ):
-    return ResponseSchema(data=DocumentRead.model_validate(
-        await service.upload_document(knowledge_base_id, file, current_user)
-    ))
+    document = await service.upload_document(knowledge_base_id, file, current_user)
+    background_tasks.add_task(process_document, document.id)
+    return ResponseSchema(data=DocumentRead.model_validate(document))
 
 
 @router.delete("/{knowledge_base_id}/documents/{document_id}", response_model=ResponseSchema[None], dependencies=[Depends(require_permission(KNOWLEDGE_DOCUMENT_MANAGE))])
@@ -103,10 +105,15 @@ async def delete_document(knowledge_base_id: int, document_id: int, service: Kno
 
 
 @router.post("/{knowledge_base_id}/documents/{document_id}/retry", response_model=ResponseSchema[DocumentRead], dependencies=[Depends(require_permission(KNOWLEDGE_DOCUMENT_MANAGE))])
-async def retry_document(knowledge_base_id: int, document_id: int, service: KnowledgeService = Depends(get_knowledge_service)):
-    return ResponseSchema(data=DocumentRead.model_validate(
-        await service.retry_document(knowledge_base_id, document_id)
-    ))
+async def retry_document(
+    knowledge_base_id: int,
+    document_id: int,
+    background_tasks: BackgroundTasks,
+    service: KnowledgeService = Depends(get_knowledge_service),
+):
+    document = await service.retry_document(knowledge_base_id, document_id)
+    background_tasks.add_task(process_document, document.id)
+    return ResponseSchema(data=DocumentRead.model_validate(document))
 
 
 @router.get("/{knowledge_base_id}/segments", response_model=ResponseSchema[PageResult[SegmentRead]], dependencies=[Depends(require_permission(KNOWLEDGE_READ))])

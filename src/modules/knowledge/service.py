@@ -1,7 +1,6 @@
 import asyncio
 import re
 import uuid
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -9,18 +8,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
 from src.core.exceptions import BizException
-from src.modules.knowledge.model import KnowledgeBase, KnowledgeDocument, KnowledgeSegment
-from src.modules.knowledge.parser import (
-    SUPPORTED_DOCUMENT_TYPES,
-    estimate_tokens,
-    extract_keywords,
-    extract_text,
-    split_text,
-    text_terms,
-)
+from src.infra.minio_client import delete_object, upload_file
+from src.modules.knowledge.model import Document, KnowledgeBase, Segment
+from src.modules.knowledge.parser import SUPPORTED_DOCUMENT_TYPES, estimate_tokens, text_terms
 from src.modules.knowledge.repository import DocumentRepository, KnowledgeBaseRepository, SegmentRepository
 from src.modules.knowledge.schema import KnowledgeBaseConfigUpdate, KnowledgeBaseCreate, KnowledgeBaseUpdate, SegmentUpdate
+from src.modules.knowledge.tasks import process_document_in_session, refresh_knowledge_base_counts
 from src.modules.user.model import User
+
+
+def format_file_size(size_bytes: int) -> str:
+    size = float(size_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{int(size)}B" if unit == "B" else f"{size:.1f}{unit}"
+        size /= 1024
+    return f"{size_bytes}B"
 
 
 class KnowledgeService:
@@ -30,13 +33,6 @@ class KnowledgeService:
         self.document_repo = DocumentRepository(db)
         self.segment_repo = SegmentRepository(db)
         self.settings = get_settings()
-        self.storage_root = Path(self.settings.KNOWLEDGE_STORAGE_DIR).resolve()
-
-    def _absolute_path(self, relative_path: str) -> Path:
-        path = (self.storage_root / relative_path).resolve()
-        if self.storage_root not in path.parents:
-            raise BizException(code=400, message="文档存储路径非法")
-        return path
 
     async def create_base(self, data: KnowledgeBaseCreate, current_user: User) -> KnowledgeBase:
         name = data.name.strip()
@@ -53,7 +49,7 @@ class KnowledgeService:
             retrieval_strategy=data.retrieval_strategy,
             top_k=data.top_k,
             similarity_threshold=data.similarity_threshold,
-            creator=current_user,
+            created_by=current_user.username,
         ))
 
     async def get_base(self, knowledge_base_id: int) -> KnowledgeBase:
@@ -95,25 +91,28 @@ class KnowledgeService:
         await self.repo.update(knowledge_base)
         if reprocess:
             for document in await self.document_repo.list_for_base(knowledge_base_id):
-                await self._process_document(knowledge_base, document)
-            await self._refresh_base_counts(knowledge_base)
+                try:
+                    await process_document_in_session(self.db, document.id)
+                except Exception as exc:
+                    raise BizException(code=503, message=f"文档重新分段失败：{exc}") from exc
         return knowledge_base
 
     async def delete_base(self, knowledge_base_id: int) -> None:
         knowledge_base = await self.get_base(knowledge_base_id)
-        paths = [self._absolute_path(item.storage_path) for item in await self.document_repo.list_for_base(knowledge_base_id)]
+        documents = await self.document_repo.list_for_base(knowledge_base_id)
+        try:
+            for document in documents:
+                if document.minio_path:
+                    await asyncio.to_thread(delete_object, document.minio_path)
+        except Exception as exc:
+            raise BizException(code=503, message=f"MinIO 文档删除失败：{exc}") from exc
         await self.repo.delete(knowledge_base)
-        for path in paths:
-            path.unlink(missing_ok=True)
-        directory = self.storage_root / str(knowledge_base_id)
-        if directory.exists() and not any(directory.iterdir()):
-            directory.rmdir()
 
     async def list_documents(self, knowledge_base_id: int, offset: int, limit: int, keyword: str | None):
         await self.get_base(knowledge_base_id)
         return await self.document_repo.search_page(knowledge_base_id, offset, limit, keyword)
 
-    async def upload_document(self, knowledge_base_id: int, file: UploadFile, current_user: User) -> KnowledgeDocument:
+    async def upload_document(self, knowledge_base_id: int, file: UploadFile, current_user: User) -> Document:
         knowledge_base = await self.get_base(knowledge_base_id)
         original_name = Path(file.filename or "").name
         if not original_name or original_name != (file.filename or ""):
@@ -128,24 +127,34 @@ class KnowledgeService:
         if len(content) > max_bytes:
             raise BizException(code=400, message=f"文档不能超过 {self.settings.MAX_DOCUMENT_SIZE_MB}MB")
 
-        relative_path = f"{knowledge_base_id}/{uuid.uuid4().hex}.{file_type}"
-        absolute_path = self._absolute_path(relative_path)
-        absolute_path.parent.mkdir(parents=True, exist_ok=True)
-        await asyncio.to_thread(absolute_path.write_bytes, content)
-        document = await self.document_repo.create(KnowledgeDocument(
-            knowledge_base_id=knowledge_base_id,
-            file_name=original_name,
-            file_type=file_type,
-            file_size_bytes=len(content),
-            storage_path=relative_path.replace("\\", "/"),
-            status="pending",
-            uploader=current_user,
-        ))
-        await self._process_document(knowledge_base, document)
-        await self._refresh_base_counts(knowledge_base)
-        return document
+        object_name = f"knowledge-bases/{knowledge_base_id}/{uuid.uuid4().hex}.{file_type}"
+        try:
+            await asyncio.to_thread(
+                upload_file,
+                object_name,
+                content,
+                file.content_type or "application/octet-stream",
+            )
+        except Exception as exc:
+            raise BizException(code=503, message=f"MinIO 文件上传失败：{exc}") from exc
 
-    async def get_document(self, knowledge_base_id: int, document_id: int) -> KnowledgeDocument:
+        try:
+            document = await self.document_repo.create(Document(
+                knowledge_base_id=knowledge_base_id,
+                file_name=original_name,
+                file_type=file_type,
+                file_size=format_file_size(len(content)),
+                minio_path=object_name,
+                status="pending",
+                uploaded_by=current_user.username,
+            ))
+            await refresh_knowledge_base_counts(self.db, knowledge_base.id)
+            return document
+        except Exception:
+            await asyncio.to_thread(delete_object, object_name)
+            raise
+
+    async def get_document(self, knowledge_base_id: int, document_id: int) -> Document:
         await self.get_base(knowledge_base_id)
         document = await self.document_repo.get_for_base(knowledge_base_id, document_id)
         if not document:
@@ -153,70 +162,28 @@ class KnowledgeService:
         return document
 
     async def delete_document(self, knowledge_base_id: int, document_id: int) -> None:
-        knowledge_base = await self.get_base(knowledge_base_id)
         document = await self.get_document(knowledge_base_id, document_id)
-        path = self._absolute_path(document.storage_path)
+        if document.minio_path:
+            try:
+                await asyncio.to_thread(delete_object, document.minio_path)
+            except Exception as exc:
+                raise BizException(code=503, message=f"MinIO 文档删除失败：{exc}") from exc
         await self.document_repo.delete(document)
-        path.unlink(missing_ok=True)
-        await self._refresh_base_counts(knowledge_base)
+        await refresh_knowledge_base_counts(self.db, knowledge_base_id)
 
-    async def retry_document(self, knowledge_base_id: int, document_id: int) -> KnowledgeDocument:
-        knowledge_base = await self.get_base(knowledge_base_id)
+    async def retry_document(self, knowledge_base_id: int, document_id: int) -> Document:
         document = await self.get_document(knowledge_base_id, document_id)
         if document.status != "failed":
             raise BizException(code=400, message="只有处理失败的文档可以重试")
-        await self._process_document(knowledge_base, document)
-        await self._refresh_base_counts(knowledge_base)
-        return document
-
-    async def _process_document(self, knowledge_base: KnowledgeBase, document: KnowledgeDocument) -> None:
-        document.status = "processing"
-        document.error_message = None
         await self.segment_repo.delete_for_document(document.id)
-        await self.db.flush()
-        try:
-            path = self._absolute_path(document.storage_path)
-            if not path.is_file():
-                raise ValueError("源文件不存在")
-            text = await asyncio.to_thread(extract_text, path, document.file_type)
-            chunks = split_text(text, knowledge_base.chunk_method, knowledge_base.chunk_size, knowledge_base.chunk_overlap)
-            if not chunks:
-                raise ValueError("未从文档中解析出可用文本")
-            for index, content in enumerate(chunks, start=1):
-                await self.segment_repo.create(KnowledgeSegment(
-                    knowledge_base_id=knowledge_base.id,
-                    document_id=document.id,
-                    content=content,
-                    word_count=len(re.findall(r"\S+", content)) if re.search(r"\s", content) else len(content),
-                    token_count=estimate_tokens(content),
-                    position=index,
-                    keywords=extract_keywords(content),
-                ))
-            document.status = "completed"
-            document.segment_count = len(chunks)
-            document.word_count = len(re.findall(r"\S+", text)) if re.search(r"\s", text) else len(text)
-            document.processed_at = datetime.now()
-        except Exception as exc:
-            document.status = "failed"
-            document.segment_count = 0
-            document.word_count = 0
-            document.error_message = str(exc)[:1000]
-            document.processed_at = datetime.now()
+        document.status = "pending"
+        document.segment_count = 0
+        document.word_count = 0
+        document.error_message = None
+        document.processed_at = None
         await self.document_repo.update(document)
-
-    async def _refresh_base_counts(self, knowledge_base: KnowledgeBase) -> None:
-        documents = await self.document_repo.list_for_base(knowledge_base.id)
-        knowledge_base.document_count = len(documents)
-        knowledge_base.segment_count = sum(item.segment_count for item in documents)
-        if not documents:
-            knowledge_base.status = "empty"
-        elif any(item.status == "processing" for item in documents):
-            knowledge_base.status = "indexing"
-        elif any(item.status == "failed" for item in documents):
-            knowledge_base.status = "error"
-        else:
-            knowledge_base.status = "ready"
-        await self.repo.update(knowledge_base)
+        await refresh_knowledge_base_counts(self.db, knowledge_base_id)
+        return document
 
     async def list_segments(self, knowledge_base_id: int, offset: int, limit: int, document_id: int | None, keyword: str | None = None):
         await self.get_base(knowledge_base_id)
@@ -224,7 +191,7 @@ class KnowledgeService:
             raise BizException(code=404, message="文档不存在")
         return await self.segment_repo.search_page(knowledge_base_id, offset, limit, document_id, keyword)
 
-    async def update_segment(self, knowledge_base_id: int, segment_id: int, data: SegmentUpdate) -> KnowledgeSegment:
+    async def update_segment(self, knowledge_base_id: int, segment_id: int, data: SegmentUpdate) -> Segment:
         segment = await self.segment_repo.get_for_base(knowledge_base_id, segment_id)
         if not segment:
             raise BizException(code=404, message="分段不存在")
@@ -232,7 +199,6 @@ class KnowledgeService:
         segment.content = content
         segment.word_count = len(re.findall(r"\S+", content)) if re.search(r"\s", content) else len(content)
         segment.token_count = estimate_tokens(content)
-        segment.keywords = extract_keywords(content)
         return await self.segment_repo.update(segment)
 
     async def retrieval_test(self, knowledge_base_id: int, query: str, top_k: int | None, threshold: float | None):
@@ -245,10 +211,9 @@ class KnowledgeService:
         cutoff = knowledge_base.similarity_threshold if threshold is None else threshold
         scored = []
         for segment in await self.segment_repo.list_for_retrieval(knowledge_base_id):
-            content_lower = segment.content.lower()
             terms = set(text_terms(segment.content))
             overlap = len(query_terms & terms) / len(query_terms)
-            exact_bonus = 0.35 if query_value.lower() in content_lower else 0
+            exact_bonus = 0.35 if query_value.lower() in segment.content.lower() else 0
             score = min(1.0, overlap * 0.65 + exact_bonus)
             if score >= cutoff:
                 scored.append((score, segment))

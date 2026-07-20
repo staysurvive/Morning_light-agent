@@ -9,9 +9,9 @@ RetrievalStrategy = Literal["fulltext"]
 
 
 class KnowledgeBaseCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=150)
+    name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=500)
-    embedding_model: str = Field(default="text-embedding-3-small", min_length=1, max_length=150)
+    embedding_model: str = Field(default="text-embedding-ada-002", min_length=1, max_length=100)
     chunk_size: int = Field(default=500, ge=100, le=2000)
     chunk_overlap: int = Field(default=50, ge=0, le=500)
     chunk_method: ChunkMethod = "fixed"
@@ -27,13 +27,13 @@ class KnowledgeBaseCreate(BaseModel):
 
 
 class KnowledgeBaseUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=150)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=500)
-    embedding_model: str | None = Field(default=None, min_length=1, max_length=150)
+    embedding_model: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class KnowledgeBaseConfigUpdate(BaseModel):
-    embedding_model: str | None = Field(default=None, min_length=1, max_length=150)
+    embedding_model: str | None = Field(default=None, min_length=1, max_length=100)
     chunk_size: int | None = Field(default=None, ge=100, le=2000)
     chunk_overlap: int | None = Field(default=None, ge=0, le=500)
     chunk_method: ChunkMethod | None = None
@@ -68,8 +68,8 @@ class DocumentRead(BaseModel):
     knowledge_base_id: int
     file_name: str
     file_type: str
-    file_size: str
-    storage_path: str
+    file_size: str | None
+    minio_path: str | None
     status: Literal["pending", "processing", "completed", "failed"]
     segment_count: int
     word_count: int
@@ -94,7 +94,6 @@ class SegmentRead(BaseModel):
     word_count: int
     token_count: int
     position: int
-    keywords: list[str]
     hit_count: int
     created_at: datetime
     updated_at: datetime

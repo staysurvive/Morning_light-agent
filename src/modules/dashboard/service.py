@@ -1,14 +1,14 @@
-import shutil
+import asyncio
 from datetime import date, datetime, time, timedelta
-from pathlib import Path
 
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.config import get_settings
+from src.infra.minio_client import get_bucket_usage
 from src.modules.agent.model import Agent
 from src.modules.conversation.model import Conversation
-from src.modules.knowledge.model import KnowledgeDocument
+from src.modules.knowledge.model import Document
 from src.modules.model.model import LLMModel
 from src.modules.system.model import SystemAlert
 
@@ -48,8 +48,14 @@ class DashboardService:
 
     async def resources(self):
         total_models=int(await self.db.scalar(select(func.count(LLMModel.id))) or 0); available=int(await self.db.scalar(select(func.count(LLMModel.id)).where(LLMModel.status=='available')) or 0)
-        storage=Path(get_settings().KNOWLEDGE_STORAGE_DIR).resolve(); storage.mkdir(parents=True,exist_ok=True); disk=shutil.disk_usage(storage)
+        document_count=int(await self.db.scalar(select(func.count(Document.id))) or 0)
+        try:
+            bucket_usage=await asyncio.to_thread(get_bucket_usage)
+            object_count=bucket_usage.object_count
+        except Exception as exc:
+            logger.warning(f"读取 MinIO 资源用量失败: {exc}")
+            object_count=0
         return [
             {"name":"可用模型","used":available,"total":total_models,"percentage":round(available/total_models*100,2) if total_models else 0,"unit":"个"},
-            {"name":"知识文件所在磁盘","used":round(disk.used/1024**3,2),"total":round(disk.total/1024**3,2),"percentage":round(disk.used/disk.total*100,2),"unit":"GB"},
+            {"name":"MinIO 文档对象","used":object_count,"total":document_count,"percentage":round(min(object_count/document_count,1)*100,2) if document_count else 0,"unit":"个"},
         ]

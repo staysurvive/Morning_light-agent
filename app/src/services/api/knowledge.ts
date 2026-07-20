@@ -27,7 +27,7 @@ export interface DocumentRead {
   file_name: string;
   file_type: string;
   file_size: string | null;
-  storage_path: string;
+  minio_path: string | null;
   status: string;
   segment_count: number;
   word_count: number;
@@ -46,7 +46,6 @@ export interface SegmentRead {
   word_count: number;
   token_count: number;
   position: number;
-  keywords: string[];
   hit_count: number;
   created_at: string;
   updated_at: string;
