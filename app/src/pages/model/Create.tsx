@@ -13,6 +13,7 @@ import { modelService } from '@/services/model';
 import type { ProviderRead } from '@/services/model';
 
 const CAPABILITY_OPTIONS = ['chat', 'completion', 'embedding', 'image', 'audio', 'vision', 'function_calling'];
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', CNY: '¥', EUR: '€' };
 
 export default function ModelCreate() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,7 @@ export default function ModelCreate() {
     is_default: false,
     description: '',
   });
+  const currencySymbol = CURRENCY_SYMBOLS[formData.currency] ?? formData.currency;
 
   useEffect(() => {
     loadProviders();
@@ -247,21 +249,21 @@ export default function ModelCreate() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>输入价格 ($)</Label>
+                  <Label>输入价格（{currencySymbol}/1M）</Label>
                   <Input
                     type="number" step="0.0001" min="0"
                     value={formData.input_price}
                     onChange={(e) => setFormData({ ...formData, input_price: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.0000"
+                    placeholder="5.0000"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>输出价格 ($)</Label>
+                  <Label>输出价格（{currencySymbol}/1M）</Label>
                   <Input
                     type="number" step="0.0001" min="0"
                     value={formData.output_price}
                     onChange={(e) => setFormData({ ...formData, output_price: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.0000"
+                    placeholder="15.0000"
                   />
                 </div>
               </div>

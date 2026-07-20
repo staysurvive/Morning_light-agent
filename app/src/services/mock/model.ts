@@ -11,12 +11,12 @@ const mockProviders: ProviderRead[] = [
 ];
 
 const mockModels: ModelRead[] = [
-  { id: 1, name: 'GPT-4o', model_id: 'gpt-4o', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'vision', 'streaming'], context_length: 128000, status: 'available', input_price: 0.005, output_price: 0.015, currency: 'USD', is_default: true, description: 'OpenAI最新旗舰模型' },
-  { id: 2, name: 'GPT-4 Turbo', model_id: 'gpt-4-turbo', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'vision', 'long_context'], context_length: 128000, status: 'available', input_price: 0.01, output_price: 0.03, currency: 'USD', is_default: false, description: 'GPT-4 Turbo版本' },
-  { id: 3, name: 'Claude 3 Opus', model_id: 'claude-3-opus-20240229', provider_id: 2, provider_name: 'Anthropic', capabilities: ['vision', 'long_context'], context_length: 200000, status: 'available', input_price: 0.015, output_price: 0.075, currency: 'USD', is_default: false, description: 'Anthropic最强模型' },
-  { id: 4, name: 'Claude 3 Sonnet', model_id: 'claude-3-sonnet-20240229', provider_id: 2, provider_name: 'Anthropic', capabilities: ['vision', 'streaming'], context_length: 200000, status: 'available', input_price: 0.003, output_price: 0.015, currency: 'USD', is_default: false, description: '平衡性能与成本' },
-  { id: 5, name: 'Qwen-Max', model_id: 'qwen-max', provider_id: 3, provider_name: '阿里云百炼', capabilities: ['function_call', 'streaming'], context_length: 32000, status: 'unavailable', input_price: 0.04, output_price: 0.12, currency: 'CNY', is_default: false, description: '通义千问旗舰版' },
-  { id: 6, name: 'GPT-3.5 Turbo', model_id: 'gpt-3.5-turbo', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'streaming'], context_length: 16385, status: 'available', input_price: 0.0005, output_price: 0.0015, currency: 'USD', is_default: false, description: '经济实用模型' },
+  { id: 1, name: 'GPT-4o', model_id: 'gpt-4o', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'vision', 'streaming'], context_length: 128000, status: 'available', input_price: 5, output_price: 15, currency: 'USD', is_default: true, description: 'OpenAI最新旗舰模型' },
+  { id: 2, name: 'GPT-4 Turbo', model_id: 'gpt-4-turbo', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'vision', 'long_context'], context_length: 128000, status: 'available', input_price: 10, output_price: 30, currency: 'USD', is_default: false, description: 'GPT-4 Turbo版本' },
+  { id: 3, name: 'Claude 3 Opus', model_id: 'claude-3-opus-20240229', provider_id: 2, provider_name: 'Anthropic', capabilities: ['vision', 'long_context'], context_length: 200000, status: 'available', input_price: 15, output_price: 75, currency: 'USD', is_default: false, description: 'Anthropic最强模型' },
+  { id: 4, name: 'Claude 3 Sonnet', model_id: 'claude-3-sonnet-20240229', provider_id: 2, provider_name: 'Anthropic', capabilities: ['vision', 'streaming'], context_length: 200000, status: 'available', input_price: 3, output_price: 15, currency: 'USD', is_default: false, description: '平衡性能与成本' },
+  { id: 5, name: 'Qwen-Max', model_id: 'qwen-max', provider_id: 3, provider_name: '阿里云百炼', capabilities: ['function_call', 'streaming'], context_length: 32000, status: 'unavailable', input_price: 40, output_price: 120, currency: 'CNY', is_default: false, description: '通义千问旗舰版' },
+  { id: 6, name: 'GPT-3.5 Turbo', model_id: 'gpt-3.5-turbo', provider_id: 1, provider_name: 'OpenAI', capabilities: ['function_call', 'streaming'], context_length: 16385, status: 'available', input_price: 0.5, output_price: 1.5, currency: 'USD', is_default: false, description: '经济实用模型' },
 ];
 
 export const mockModelService = {

@@ -13,6 +13,11 @@ import Pagination from '@/components/Pagination';
 import { useAuthorization } from '@/hooks/useAuthorization';
 import { PERMISSIONS } from '@/services/permissions';
 
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', CNY: '¥', EUR: '€' };
+
+const formatPrice = (price: number, currency: string) =>
+  `${CURRENCY_SYMBOLS[currency] ?? currency}${price} / 1M`;
+
 export default function ModelList() {
   const navigate = useNavigate();
   const { can } = useAuthorization();
@@ -114,7 +119,7 @@ export default function ModelList() {
                 <TableHead>供应商</TableHead>
                 <TableHead>能力</TableHead>
                 <TableHead>上下文长度</TableHead>
-                <TableHead>价格(输入/输出)</TableHead>
+                <TableHead className="min-w-36">价格</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
@@ -141,9 +146,15 @@ export default function ModelList() {
                   </TableCell>
                   <TableCell>{model.context_length.toLocaleString()}</TableCell>
                   <TableCell>
-                    <div className="text-sm">
-                      <div>{model.input_price} {model.currency}</div>
-                      <div>{model.output_price} {model.currency}</div>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">输入</div>
+                        <div className="font-medium">{formatPrice(model.input_price, model.currency)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">输出</div>
+                        <div className="font-medium">{formatPrice(model.output_price, model.currency)}</div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(model.status)}</TableCell>

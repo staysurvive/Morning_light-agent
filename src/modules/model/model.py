@@ -21,8 +21,12 @@ class LLMModel(BaseModel):
     capabilities: Mapped[list[str]] = mapped_column(JSON, default=list, comment="模型能力")
     context_length: Mapped[int] = mapped_column(default=4096, comment="上下文长度")
     status: Mapped[str] = mapped_column(String(30), default="available", index=True, comment="模型状态")
-    input_price: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=0, comment="输入价格")
-    output_price: Mapped[Decimal] = mapped_column(Numeric(18, 8), default=0, comment="输出价格")
+    input_price: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), default=0, comment="每百万 Token 输入价格"
+    )
+    output_price: Mapped[Decimal] = mapped_column(
+        Numeric(18, 8), default=0, comment="每百万 Token 输出价格"
+    )
     currency: Mapped[str] = mapped_column(String(20), default="USD", comment="计价单位")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True, comment="是否默认模型")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="模型描述")

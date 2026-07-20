@@ -19,8 +19,8 @@ export interface ModelRead {
   capabilities: string[];
   context_length: number;
   status: string;
-  input_price: number;
-  output_price: number;
+  input_price: number; // price per 1M input tokens
+  output_price: number; // price per 1M output tokens
   currency: string;
   is_default: boolean;
   description: string | null;

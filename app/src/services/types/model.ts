@@ -7,8 +7,8 @@ export interface Model {
   capabilities: ModelCapability[]
   contextLength: number
   status: 'available' | 'unavailable' | 'rate_limited'
-  inputPrice: number
-  outputPrice: number
+  inputPrice: number // price per 1M input tokens
+  outputPrice: number // price per 1M output tokens
   currency: string
   callCount7d: number
   tokenUsage7d: number
