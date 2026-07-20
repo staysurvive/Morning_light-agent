@@ -16,6 +16,9 @@ _minio_client = Minio(
     secret_key=settings.MINIO_SECRET_KEY,
     secure=settings.MINIO_SECURE,
 )
+# MinIO does not expose a public close method. Keep the PoolManager it creates
+# so the adapter can release persistent HTTP connections during app shutdown.
+_minio_http_client = _minio_client._http
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,12 @@ def get_minio_client() -> Minio:
     """Return the shared MinIO client instance."""
 
     return _minio_client
+
+
+def close_minio_client() -> None:
+    """Close all persistent HTTP connections held by the shared MinIO client."""
+
+    _minio_http_client.clear()
 
 
 def ensure_bucket_exists() -> bool:

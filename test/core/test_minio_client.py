@@ -45,6 +45,14 @@ class FakeMinio:
         return [SimpleNamespace(size=3), SimpleNamespace(size=5)]
 
 
+class FakeHttpClient:
+    def __init__(self):
+        self.cleared = False
+
+    def clear(self):
+        self.cleared = True
+
+
 def test_minio_adapter_uses_valid_sdk_arguments(monkeypatch):
     fake = FakeMinio()
     monkeypatch.setattr(minio_client, "_minio_client", fake)
@@ -66,3 +74,12 @@ def test_minio_adapter_uses_valid_sdk_arguments(monkeypatch):
     usage = minio_client.get_bucket_usage()
     assert usage.object_count == 2
     assert usage.size_bytes == 8
+
+
+def test_minio_http_pool_is_closed(monkeypatch):
+    fake_http_client = FakeHttpClient()
+    monkeypatch.setattr(minio_client, "_minio_http_client", fake_http_client)
+
+    minio_client.close_minio_client()
+
+    assert fake_http_client.cleared is True

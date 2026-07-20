@@ -24,3 +24,9 @@ async def get_redis_client() -> redis.Redis:
     连接池会自动管理连接的获取和归还。
     """
     return _redis_client
+
+
+async def close_redis_client() -> None:
+    """Close the shared Redis client and its externally owned connection pool."""
+
+    await _redis_client.aclose(close_connection_pool=True)

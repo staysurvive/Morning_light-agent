@@ -3,7 +3,8 @@ import asyncio
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from src.infra.minio_client import ensure_bucket_exists
+from src.infra.minio_client import close_minio_client, ensure_bucket_exists
+from src.infra.redis_cache import close_redis_client
 from src.core.config import get_settings
 from src.middlewares.logging import LoggingMiddleware
 from src.core.exceptions import register_exception_handlers
@@ -27,23 +28,27 @@ from src.modules.dashboard.api import router as dashboard_router
 from src.middlewares.audit import AuditMiddleware
 
 # 使用上下文管理器感知项目的生命周期  （主要是项目的启动和停止）
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 @asynccontextmanager
 async def  lifespan(app: FastAPI):
     # 项目启动时执行
     setup_logger()  # 配置日志记录器
     setting = get_settings()
     logger.info(f"项目{setting.APP_NAME} 启动,环境：{setting.APP_ENV}")
-    # 确保minio桶的存在
     try:
-        await asyncio.to_thread(ensure_bucket_exists)
-    except Exception as e:
-        logger.error(f"minio 桶创建失败，文件上传功能无法使用:{e}")
-    yield
-    # 项目停止时执行
-    # 关闭数据库连接池
-    await engine.dispose()
-    logger.info(f"项目{setting.APP_NAME} 停止,环境：{setting.APP_ENV}")
+        async with AsyncExitStack() as cleanup:
+            cleanup.push_async_callback(engine.dispose)
+            cleanup.callback(close_minio_client)
+            cleanup.push_async_callback(close_redis_client)
+
+            # 确保minio桶的存在
+            try:
+                await asyncio.to_thread(ensure_bucket_exists)
+            except Exception as e:
+                logger.error(f"minio 桶创建失败，文件上传功能无法使用:{e}")
+            yield
+    finally:
+        logger.info(f"项目{setting.APP_NAME} 停止,环境：{setting.APP_ENV}")
 
 
 def create_app() -> FastAPI:
