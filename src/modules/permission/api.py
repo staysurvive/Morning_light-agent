@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.base_schema import PageResult, ResponseSchema
 from src.core.deps import PageParams, require_permission
 from src.core.permissions import (

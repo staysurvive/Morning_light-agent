@@ -1,8 +1,8 @@
 from src.core.base_repository import BaseRepository
+from src.modules.permission.model import Permission
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from src.modules.permission.model import Permission
 
 class PermissionRepository(BaseRepository[Permission]):
     SEARCH_FIELDS = ["code","name"]
