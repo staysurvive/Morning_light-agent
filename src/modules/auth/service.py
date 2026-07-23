@@ -8,7 +8,6 @@ from src.modules.captcha.schema import CaptchaVerifyRequest
 from src.modules.captcha.service import CaptchaService
 from src.modules.utils.jwt_utils import encode_jwt, verify_jwt
 from src.modules.utils.password_utils import verify_password
-from loguru import  logger
 CAPTCHA_PREFIX = "captcha:"
 
 class AuthService:

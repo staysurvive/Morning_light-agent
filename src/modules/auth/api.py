@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis
 from src.infra.database import get_db
 from src.core.base_schema import ResponseSchema
-from src.core.exceptions import BizException
 from src.modules.auth.schema import AuthLoginRequest, TokenResponse
 from src.modules.auth.service import AuthService
 from src.infra.redis_cache import get_redis_client
